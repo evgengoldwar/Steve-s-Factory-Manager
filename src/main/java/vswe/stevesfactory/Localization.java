@@ -330,7 +330,6 @@ public enum Localization {
     VIEW_FIT,
     VIEW_RESET_ZOOM,
     VIEW_GRID,
-    VIEW_MINIMAP,
     VIEW_HELP,
     VIEW_HELP_PAN,
     VIEW_HELP_ZOOM,

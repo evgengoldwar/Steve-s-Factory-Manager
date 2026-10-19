@@ -364,7 +364,6 @@ gui.sfm.ManagerTitle=Factory Manager
 gui.sfm.ViewFit=Show all commands (Home)
 gui.sfm.ViewResetZoom=Reset zoom to 100%
 gui.sfm.ViewGrid=Toggle grid
-gui.sfm.ViewMinimap=Toggle minimap
 gui.sfm.ViewHelp=Controls
 gui.sfm.ViewHelpPan=Drag empty space or hold the middle mouse button to move around
 gui.sfm.ViewHelpZoom=Scroll over empty space (or Ctrl + Scroll) to zoom

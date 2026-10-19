@@ -364,7 +364,6 @@ gui.sfm.ManagerTitle=工厂管理器
 gui.sfm.ViewFit=显示所有命令 (Home)
 gui.sfm.ViewResetZoom=缩放重置为100%
 gui.sfm.ViewGrid=切换网格
-gui.sfm.ViewMinimap=切换小地图
 gui.sfm.ViewHelp=操作说明
 gui.sfm.ViewHelpPan=拖动空白处或按住鼠标中键来移动视图
 gui.sfm.ViewHelpZoom=在空白处滚动滚轮(或Ctrl+滚轮)来缩放

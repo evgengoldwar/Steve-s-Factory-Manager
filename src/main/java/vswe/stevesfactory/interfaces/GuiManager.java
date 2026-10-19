@@ -83,13 +83,8 @@ public class GuiManager extends GuiBase {
     private static final int TOOL_FIT = 0;
     private static final int TOOL_RESET_ZOOM = 1;
     private static final int TOOL_GRID = 2;
-    private static final int TOOL_MINIMAP = 3;
-    private static final int TOOL_HELP = 4;
-    private static final int TOOL_COUNT = 5;
-
-    private static final int MINIMAP_WIDTH = 120;
-    private static final int MINIMAP_HEIGHT = 76;
-    private static final int MINIMAP_PADDING = 20;
+    private static final int TOOL_HELP = 3;
+    private static final int TOOL_COUNT = 4;
 
     // vanilla inventory colors
     private static final int COLOR_PANEL = 0xFFC6C6C6;
@@ -128,7 +123,6 @@ public class GuiManager extends GuiBase {
     // views are remembered per manager and per group while the game is running
     private static final Map<TileEntityManager, Map<Integer, float[]>> savedViews = new WeakHashMap<TileEntityManager, Map<Integer, float[]>>();
     private static boolean showGrid = true;
-    private static boolean showMinimap = true;
 
     private int canvasX;
     private int canvasY;
@@ -148,15 +142,6 @@ public class GuiManager extends GuiBase {
     private int panStartY;
     private float panStartCameraX;
     private float panStartCameraY;
-
-    private boolean isDraggingMinimap;
-    private int minimapX;
-    private int minimapY;
-    private int minimapW;
-    private int minimapH;
-    private float minimapScale;
-    private float minimapOriginX;
-    private float minimapOriginY;
 
     @Override
     public void initGui() {
@@ -313,9 +298,6 @@ public class GuiManager extends GuiBase {
 
         GL11.glPushMatrix();
         GL11.glTranslatef(0, 0, Z_LEVEL_OVERLAY);
-        if (showMinimap) {
-            drawMinimap();
-        }
         drawToolbar(x, y);
 
         bindTexture(COMPONENTS);
@@ -379,7 +361,7 @@ public class GuiManager extends GuiBase {
             int tool = getToolAt(x, y);
             if (tool != -1) {
                 drawMouseOver(getToolMouseOver(tool), x, y);
-            } else if (isInCanvas(x, y) && !isOnMinimap(x, y)) {
+            } else if (isInCanvas(x, y)) {
                 setTooltipTransform(canvasX - cameraX * zoom, canvasY - cameraY * zoom, zoom);
                 for (FlowComponent itemBase : manager.getZLevelRenderingList()) {
                     if (itemBase.isVisible()) {
@@ -490,7 +472,7 @@ public class GuiManager extends GuiBase {
             int x = getToolX(i);
             int y = getToolY();
             boolean hover = CollisionHelper.inBounds(x, y, TOOL_SIZE - 1, TOOL_SIZE - 1, mX, mY);
-            boolean active = (i == TOOL_GRID && showGrid) || (i == TOOL_MINIMAP && showMinimap);
+            boolean active = i == TOOL_GRID && showGrid;
             int iconColor = active ? COLOR_ICON_ACTIVE : COLOR_ICON;
 
             // dark buttons like the ones of the NEI crafting tree
@@ -533,14 +515,6 @@ public class GuiManager extends GuiBase {
                         drawColoredRect(iconX, iconY + 1 + j * 3, 8, 1, iconColor);
                     }
                     break;
-                case TOOL_MINIMAP:
-                    drawColoredRect(iconX, iconY, 8, 1, iconColor);
-                    drawColoredRect(iconX, iconY + 7, 8, 1, iconColor);
-                    drawColoredRect(iconX, iconY, 1, 8, iconColor);
-                    drawColoredRect(iconX + 7, iconY, 1, 8, iconColor);
-                    drawColoredRect(iconX + 2, iconY + 2, 3, 2, iconColor);
-                    drawColoredRect(iconX + 4, iconY + 4, 2, 2, iconColor);
-                    break;
                 case TOOL_HELP:
                     drawShadowString("?", x + 5, y + 4, iconColor);
                     break;
@@ -573,8 +547,6 @@ public class GuiManager extends GuiBase {
                 return Localization.VIEW_RESET_ZOOM.toString();
             case TOOL_GRID:
                 return Localization.VIEW_GRID.toString();
-            case TOOL_MINIMAP:
-                return Localization.VIEW_MINIMAP.toString();
             default:
                 return Localization.VIEW_HELP.toString() + "\n"
                         + Localization.VIEW_HELP_PAN.toString()
@@ -600,76 +572,6 @@ public class GuiManager extends GuiBase {
             case TOOL_GRID:
                 showGrid = !showGrid;
                 break;
-            case TOOL_MINIMAP:
-                showMinimap = !showMinimap;
-                break;
-        }
-    }
-
-    private void drawMinimap() {
-        minimapW = Math.min(MINIMAP_WIDTH, canvasW / 3);
-        minimapH = Math.min(MINIMAP_HEIGHT, canvasH / 3);
-        minimapX = canvasX + canvasW - minimapW - 4;
-        minimapY = canvasY + canvasH - minimapH - 4;
-
-        float viewW = canvasW / zoom;
-        float viewH = canvasH / zoom;
-        float minX = cameraX;
-        float minY = cameraY;
-        float maxX = cameraX + viewW;
-        float maxY = cameraY + viewH;
-        for (FlowComponent component : manager.getFlowItems()) {
-            if (component.isVisible()) {
-                minX = Math.min(minX, component.getX());
-                minY = Math.min(minY, component.getY());
-                maxX = Math.max(maxX, component.getX() + component.getComponentWidth());
-                maxY = Math.max(maxY, component.getY() + component.getComponentHeight());
-            }
-        }
-        minX -= MINIMAP_PADDING;
-        minY -= MINIMAP_PADDING;
-        maxX += MINIMAP_PADDING;
-        maxY += MINIMAP_PADDING;
-
-        minimapScale = Math.min((minimapW - 2) / (maxX - minX), (minimapH - 2) / (maxY - minY));
-        minimapOriginX = minimapX + 1 + ((minimapW - 2) - (maxX - minX) * minimapScale) / 2 - minX * minimapScale;
-        minimapOriginY = minimapY + 1 + ((minimapH - 2) - (maxY - minY) * minimapScale) / 2 - minY * minimapScale;
-
-        drawColoredRect(minimapX - 1, minimapY - 1, minimapW + 2, minimapH + 2, COLOR_SEPARATOR);
-        drawColoredRect(minimapX, minimapY, minimapW, minimapH, 0xF0181924);
-
-        for (FlowComponent component : manager.getFlowItems()) {
-            if (component.isVisible()) {
-                int color = component.isBeingMoved() ? 0xFFFFFFFF : component.getTypeColor();
-                int x = (int) (minimapOriginX + component.getX() * minimapScale);
-                int y = (int) (minimapOriginY + component.getY() * minimapScale);
-                int w = Math.max(1, (int) (component.getComponentWidth() * minimapScale));
-                int h = Math.max(1, (int) (component.getComponentHeight() * minimapScale));
-                drawColoredRect(x, y, w, h, color);
-            }
-        }
-
-        int viewX = (int) (minimapOriginX + cameraX * minimapScale);
-        int viewY = (int) (minimapOriginY + cameraY * minimapScale);
-        int viewRight = (int) (minimapOriginX + (cameraX + viewW) * minimapScale);
-        int viewBottom = (int) (minimapOriginY + (cameraY + viewH) * minimapScale);
-        drawColoredRect(viewX, viewY, viewRight - viewX, 1, 0xFFFFFFFF);
-        drawColoredRect(viewX, viewBottom - 1, viewRight - viewX, 1, 0xFFFFFFFF);
-        drawColoredRect(viewX, viewY, 1, viewBottom - viewY, 0xFFFFFFFF);
-        drawColoredRect(viewRight - 1, viewY, 1, viewBottom - viewY, 0xFFFFFFFF);
-    }
-
-    private boolean isOnMinimap(int x, int y) {
-        return showMinimap && CollisionHelper.inBounds(minimapX, minimapY, minimapW, minimapH, x, y);
-    }
-
-    private void moveToMinimapLocation(int x, int y) {
-        if (minimapScale > 0) {
-            float worldX = (x - minimapOriginX) / minimapScale;
-            float worldY = (y - minimapOriginY) / minimapScale;
-            cameraX = worldX - canvasW / zoom / 2;
-            cameraY = worldY - canvasH / zoom / 2;
-            clampCamera();
         }
     }
 
@@ -1183,12 +1085,6 @@ public class GuiManager extends GuiBase {
             return;
         }
 
-        if (isOnMinimap(x, y)) {
-            isDraggingMinimap = true;
-            moveToMinimapLocation(x, y);
-            return;
-        }
-
         boolean inCanvas = isInCanvas(x, y);
         if (inCanvas && button == 2) {
             startPanning(x, y, button);
@@ -1264,11 +1160,6 @@ public class GuiManager extends GuiBase {
             return;
         }
 
-        if (isDraggingMinimap) {
-            moveToMinimapLocation(x, y);
-            return;
-        }
-
         if (isPanning) {
             if (Math.abs(x - panStartX) > PAN_THRESHOLD || Math.abs(y - panStartY) > PAN_THRESHOLD) {
                 hasPanned = true;
@@ -1304,8 +1195,6 @@ public class GuiManager extends GuiBase {
             getSpecialRenderer().onRelease(this, x - getSpecialOffsetX(), y - getSpecialOffsetY());
             return;
         }
-
-        isDraggingMinimap = false;
 
         if (isPanning && button == panButton) {
             isPanning = false;

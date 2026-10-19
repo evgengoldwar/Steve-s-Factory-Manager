@@ -4,7 +4,6 @@ gui.sfm.ManagerTitle=Менеджер фабрики
 gui.sfm.ViewFit=Показать все команды (Home)
 gui.sfm.ViewResetZoom=Сбросить масштаб до 100%
 gui.sfm.ViewGrid=Показать/скрыть сетку
-gui.sfm.ViewMinimap=Показать/скрыть миникарту
 gui.sfm.ViewHelp=Управление
 gui.sfm.ViewHelpPan=Перетаскивайте пустое место или зажмите среднюю кнопку мыши, чтобы перемещаться
 gui.sfm.ViewHelpZoom=Колесо мыши над пустым местом (или Ctrl + колесо) меняет масштаб
