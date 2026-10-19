@@ -7,6 +7,7 @@ import java.util.List;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
+import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.init.Blocks;
@@ -337,16 +338,50 @@ public abstract class GuiBase extends GuiAntiNEI {
         return (int) Math.floor(tooltipOffsetY + y * tooltipScale);
     }
 
+    private boolean isBatchingRects;
+
+    /**
+     * Starts collecting colored rectangles so they are drawn together, which is much faster than drawing them one by
+     * one. Nothing but rectangles may be drawn until {@link #endRects(boolean)} is called with the returned value.
+     *
+     * @return if a new batch was started, false if one was already in progress
+     */
+    public boolean beginRects() {
+        if (isBatchingRects) {
+            return false;
+        }
+        isBatchingRects = true;
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL11.glEnable(GL11.GL_BLEND);
+        OpenGlHelper.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
+        Tessellator.instance.startDrawingQuads();
+        return true;
+    }
+
+    public void endRects(boolean started) {
+        if (!started) {
+            return;
+        }
+        isBatchingRects = false;
+        Tessellator.instance.draw();
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+    }
+
     public void drawColoredRect(int x, int y, int w, int h, int color) {
         if (w <= 0 || h <= 0) {
             return;
         }
-        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND);
-        Gui.drawRect(guiLeft + x, guiTop + y, guiLeft + x + w, guiTop + y + h, color);
-        if (blend) {
-            GL11.glEnable(GL11.GL_BLEND);
-        }
-        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        boolean started = beginRects();
+        Tessellator tessellator = Tessellator.instance;
+        tessellator.setColorRGBA_I(color & 0xFFFFFF, (color >>> 24) & 0xFF);
+        double left = guiLeft + x;
+        double top = guiTop + y;
+        tessellator.addVertex(left, top + h, 0);
+        tessellator.addVertex(left + w, top + h, 0);
+        tessellator.addVertex(left + w, top, 0);
+        tessellator.addVertex(left, top, 0);
+        endRects(started);
     }
 
     public void drawBlock(TileEntity te, int x, int y) {

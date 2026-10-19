@@ -522,6 +522,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
     @SideOnly(Side.CLIENT)
     private static void drawChevron(GuiManager gui, int x, int y, int w, int h, boolean open, boolean hover) {
+        boolean started = gui.beginRects();
         if (hover) {
             gui.drawColoredRect(x, y, w, h, COLOR_ARROW_HOVER_BACKGROUND);
         }
@@ -537,6 +538,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                 gui.drawColoredRect(centerX - 1 + i, centerY - 2 + i, 1, 5 - i * 2, color);
             }
         }
+        gui.endRects(started);
     }
 
     public static int getTitleHeight() {

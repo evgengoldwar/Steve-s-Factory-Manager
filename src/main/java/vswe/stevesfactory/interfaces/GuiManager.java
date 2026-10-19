@@ -1,6 +1,7 @@
 package vswe.stevesfactory.interfaces;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,8 +9,6 @@ import java.util.WeakHashMap;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.util.ResourceLocation;
 
@@ -153,6 +152,7 @@ public class GuiManager extends GuiBase {
     private int sidebarH;
     private int sidebarButtonW;
     private int sidebarLabelW;
+    private String[] sidebarLabels = new String[0];
     private int infoX;
     private int infoY;
     private int infoW;
@@ -193,6 +193,11 @@ public class GuiManager extends GuiBase {
                     .max(sidebarLabelW, (int) Math.ceil(getStringWidth(button.getLabel()) * SIDEBAR_TEXT_SCALE));
         }
         sidebarLabelW = Math.min(SIDEBAR_LABEL_MAX, sidebarLabelW);
+        sidebarLabels = new String[manager.buttons.size()];
+        for (int i = 0; i < sidebarLabels.length; i++) {
+            sidebarLabels[i] = fontRendererObj
+                    .trimStringToWidth(manager.buttons.get(i).getLabel(), (int) (sidebarLabelW / SIDEBAR_TEXT_SCALE));
+        }
         sidebarButtonW = 17 + sidebarLabelW + 4;
         sidebarX = PADDING;
         sidebarY = top;
@@ -370,9 +375,7 @@ public class GuiManager extends GuiBase {
                             TileEntityManager.BUTTON_INNER_SRC_Y + i * TileEntityManager.BUTTON_INNER_SIZE_H,
                             TileEntityManager.BUTTON_INNER_SIZE_W,
                             TileEntityManager.BUTTON_INNER_SIZE_H);
-                    String label = fontRendererObj
-                            .trimStringToWidth(button.getLabel(), (int) (sidebarLabelW / SIDEBAR_TEXT_SCALE));
-                    drawShadowString(label, buttonX + 17, buttonY + 5, SIDEBAR_TEXT_SCALE, COLOR_TEXT);
+                    drawShadowString(sidebarLabels[i], buttonX + 17, buttonY + 5, SIDEBAR_TEXT_SCALE, COLOR_TEXT);
                 }
             }
         }
@@ -429,12 +432,14 @@ public class GuiManager extends GuiBase {
         // icon showing a few connected nodes
         int iconX = PADDING;
         int iconY = BORDER + 2;
+        boolean started = beginRects();
         drawSlot(iconX, iconY, TOOL_SIZE, TOOL_SIZE, COLOR_SLOT_BORDER);
         drawColoredRect(iconX + 3, iconY + 3, 4, 4, COLOR_ICON);
         drawColoredRect(iconX + 9, iconY + 9, 4, 4, COLOR_ICON);
         drawColoredRect(iconX + 9, iconY + 3, 4, 4, COLOR_CONNECTION);
         drawColoredRect(iconX + 7, iconY + 4, 2, 1, COLOR_CONNECTION);
         drawColoredRect(iconX + 10, iconY + 7, 1, 2, COLOR_CONNECTION);
+        endRects(started);
 
         drawString(Localization.MANAGER_TITLE.toString(), iconX + TOOL_SIZE + 5, iconY + 4, 1F, COLOR_TITLE);
 
@@ -602,6 +607,7 @@ public class GuiManager extends GuiBase {
     }
 
     private void drawPanel(int x, int y, int w, int h) {
+        boolean started = beginRects();
         drawColoredRect(x + 1, y + 1, w - 2, h - 2, COLOR_PANEL);
         drawColoredRect(x + 2, y + 1, w - 5, 2, COLOR_PANEL_LIGHT);
         drawColoredRect(x + 1, y + 2, 2, h - 5, COLOR_PANEL_LIGHT);
@@ -616,21 +622,25 @@ public class GuiManager extends GuiBase {
         drawColoredRect(x + w - 2, y + 1, 1, 1, COLOR_OUTLINE);
         drawColoredRect(x + 1, y + h - 2, 1, 1, COLOR_OUTLINE);
         drawColoredRect(x + w - 2, y + h - 2, 1, 1, COLOR_OUTLINE);
+        endRects(started);
     }
 
     /**
      * The panels inside the frame are dark and sunken into it
      */
     private void drawInsetPanel(int x, int y, int w, int h) {
+        boolean started = beginRects();
         drawColoredRect(x, y, w - 1, 1, COLOR_PANEL_DARK);
         drawColoredRect(x, y, 1, h - 1, COLOR_PANEL_DARK);
         drawColoredRect(x + 1, y + h - 1, w - 1, 1, COLOR_PANEL_LIGHT);
         drawColoredRect(x + w - 1, y + 1, 1, h - 1, COLOR_PANEL_LIGHT);
         drawColoredRect(x + 1, y + 1, w - 2, h - 2, COLOR_INSET_BORDER);
         drawColoredRect(x + 2, y + 2, w - 4, h - 4, COLOR_INSET);
+        endRects(started);
     }
 
     private void drawRaised(int x, int y, int w, int h, boolean active) {
+        boolean started = beginRects();
         drawColoredRect(x, y, w, h, active ? COLOR_RAISED_ACTIVE : COLOR_RAISED);
         if (!active) {
             drawColoredRect(x, y, w, 1, COLOR_RAISED_TOP);
@@ -638,34 +648,41 @@ public class GuiManager extends GuiBase {
         }
         drawColoredRect(x, y + h - 1, w, 1, COLOR_RAISED_BOTTOM);
         drawColoredRect(x + w - 1, y + 1, 1, h - 2, COLOR_RAISED_RIGHT);
+        endRects(started);
     }
 
     /**
      * Commands and menus are dark raised panels with rounded corners
      */
     public void drawRaisedPanel(int x, int y, int w, int h) {
+        boolean started = beginRects();
         drawColoredRect(x + 1, y, w - 2, 1, COLOR_RAISED_BORDER);
         drawColoredRect(x + 1, y + h - 1, w - 2, 1, COLOR_RAISED_BORDER);
         drawColoredRect(x, y + 1, 1, h - 2, COLOR_RAISED_BORDER);
         drawColoredRect(x + w - 1, y + 1, 1, h - 2, COLOR_RAISED_BORDER);
         drawRaised(x + 1, y + 1, w - 2, h - 2, false);
+        endRects(started);
     }
 
     /**
      * Buttons are dark raised boxes with a green border when hovered
      */
     public void drawDarkButton(int x, int y, int w, int h, boolean hover, boolean active) {
+        boolean started = beginRects();
         drawColoredRect(x, y, w, h, hover ? COLOR_HIGHLIGHT : COLOR_RAISED_BORDER);
         drawRaised(x + 1, y + 1, w - 2, h - 2, active);
+        endRects(started);
     }
 
     /**
      * A sunken slot, used behind icons and fields
      */
     public void drawSlot(int x, int y, int w, int h, int border) {
+        boolean started = beginRects();
         drawColoredRect(x, y, w, h, border);
         drawColoredRect(x + 1, y + 1, w - 2, h - 2, COLOR_SLOT);
         drawColoredRect(x + 1, y + h - 2, w - 2, 1, COLOR_SLOT_LIGHT);
+        endRects(started);
     }
 
     public int getSlotBorderColor() {
@@ -673,6 +690,7 @@ public class GuiManager extends GuiBase {
     }
 
     private void drawCanvasBackground() {
+        boolean started = beginRects();
         // darken everything outside the area commands can be placed in
         int left = toLocalX(0);
         int top = toLocalY(0);
@@ -686,6 +704,7 @@ public class GuiManager extends GuiBase {
         drawColoredRect(canvasX, bottom, canvasW, canvasBottom - bottom, COLOR_CANVAS_OUTSIDE);
 
         if (!showGrid) {
+            endRects(started);
             return;
         }
 
@@ -726,6 +745,7 @@ public class GuiManager extends GuiBase {
                         worldY % GRID_MAJOR_SIZE == 0 ? COLOR_GRID_MAJOR : COLOR_GRID_MINOR);
             }
         }
+        endRects(started);
     }
 
     private void drawToolbar(int mX, int mY) {
@@ -736,6 +756,7 @@ public class GuiManager extends GuiBase {
             boolean active = i == TOOL_GRID && showGrid;
             int iconColor = COLOR_ICON;
 
+            boolean started = beginRects();
             drawDarkButton(x, y, TOOL_SIZE, TOOL_SIZE, hover, active);
 
             int iconX = x + 4;
@@ -768,9 +789,12 @@ public class GuiManager extends GuiBase {
                     }
                     break;
                 case TOOL_HELP:
+                    endRects(started);
+                    started = false;
                     drawShadowString("?", x + 5, y + 4, iconColor);
                     break;
             }
+            endRects(started);
         }
     }
 
@@ -980,102 +1004,65 @@ public class GuiManager extends GuiBase {
     }
 
     private void drawRoute(List<int[]> route, int color, boolean forward, float speed) {
-        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND);
-        boolean cull = GL11.glIsEnabled(GL11.GL_CULL_FACE);
+        // everything of the line is drawn at once, the shadow first so the line covers it
+        boolean started = beginRects();
 
         // a dark shadow below and to the right, like the shadow of minecraft text
-        beginShape(COLOR_CONNECTION_SHADOW);
         for (int i = 1; i < route.size(); i++) {
-            addSegment(route.get(i - 1), route.get(i), 1);
+            drawSegment(route.get(i - 1), route.get(i), 1, COLOR_CONNECTION_SHADOW);
         }
-        endShape(blend, cull);
-
-        beginShape(color);
-        for (int i = 1; i < route.size(); i++) {
-            addSegment(route.get(i - 1), route.get(i), 0);
-        }
-        endShape(blend, cull);
-
-        // short pulses moving along the line, a bit like a redstone signal
         int length = 0;
         for (int i = 1; i < route.size(); i++) {
+            drawSegment(route.get(i - 1), route.get(i), 0, color);
             length += getSegmentLength(route.get(i - 1), route.get(i));
         }
-        if (length < PULSE_SPACING) {
-            return;
-        }
-        int offset = (int) ((Minecraft.getSystemTime() % 100000L) / 1000F * speed) % PULSE_SPACING;
-        beginShape(getLighterColor(color));
-        for (int distance = offset; distance + PULSE_LENGTH <= length; distance += PULSE_SPACING) {
-            for (int j = 0; j < PULSE_LENGTH; j++) {
-                int[] pixel = getRoutePixel(route, forward ? distance + j : length - distance - j);
-                addPixel(pixel[0], pixel[1]);
+
+        // short pulses moving along the line, a bit like a redstone signal
+        if (length >= PULSE_SPACING) {
+            List<int[]> path = route;
+            if (!forward) {
+                path = new ArrayList<int[]>(route);
+                Collections.reverse(path);
+            }
+            int pulseColor = getLighterColor(color);
+            int offset = (int) ((Minecraft.getSystemTime() % 100000L) / 1000F * speed) % PULSE_SPACING;
+            int segment = 1;
+            int segmentStart = 0;
+            for (int distance = offset; distance + PULSE_LENGTH <= length; distance += PULSE_SPACING) {
+                for (int j = 0; j < PULSE_LENGTH; j++) {
+                    int target = distance + j;
+                    while (segment < path.size() - 1
+                            && target > segmentStart + getSegmentLength(path.get(segment - 1), path.get(segment))) {
+                        segmentStart += getSegmentLength(path.get(segment - 1), path.get(segment));
+                        segment++;
+                    }
+                    int[] from = path.get(segment - 1);
+                    int[] to = path.get(segment);
+                    int along = target - segmentStart;
+                    drawColoredRect(
+                            from[0] + Integer.signum(to[0] - from[0]) * along,
+                            from[1] + Integer.signum(to[1] - from[1]) * along,
+                            LINE_WIDTH,
+                            LINE_WIDTH,
+                            pulseColor);
+                }
             }
         }
-        endShape(blend, cull);
+
+        endRects(started);
     }
 
     private static int getSegmentLength(int[] from, int[] to) {
         return Math.abs(to[0] - from[0]) + Math.abs(to[1] - from[1]);
     }
 
-    private static int[] getRoutePixel(List<int[]> route, int distance) {
-        for (int i = 1; i < route.size(); i++) {
-            int[] from = route.get(i - 1);
-            int[] to = route.get(i);
-            int segment = getSegmentLength(from, to);
-            if (distance <= segment) {
-                return new int[] { from[0] + Integer.signum(to[0] - from[0]) * distance,
-                        from[1] + Integer.signum(to[1] - from[1]) * distance };
-            }
-            distance -= segment;
-        }
-        return route.get(route.size() - 1);
-    }
-
-    private void addSegment(int[] from, int[] to, int offset) {
-        int x = Math.min(from[0], to[0]) + offset;
-        int y = Math.min(from[1], to[1]) + offset;
-        addRect(x, y, Math.abs(to[0] - from[0]) + LINE_WIDTH, Math.abs(to[1] - from[1]) + LINE_WIDTH);
-    }
-
-    private void addPixel(int x, int y) {
-        addRect(x, y, LINE_WIDTH, LINE_WIDTH);
-    }
-
-    private void addRect(int x, int y, int w, int h) {
-        Tessellator tessellator = Tessellator.instance;
-        x += guiLeft;
-        y += guiTop;
-        tessellator.addVertex(x, y + h, zLevel);
-        tessellator.addVertex(x + w, y + h, zLevel);
-        tessellator.addVertex(x + w, y, zLevel);
-        tessellator.addVertex(x, y, zLevel);
-    }
-
-    private void beginShape(int color) {
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glEnable(GL11.GL_BLEND);
-        OpenGlHelper.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
-        GL11.glDisable(GL11.GL_CULL_FACE);
-        GL11.glColor4f(
-                ((color >> 16) & 0xFF) / 255F,
-                ((color >> 8) & 0xFF) / 255F,
-                (color & 0xFF) / 255F,
-                ((color >> 24) & 0xFF) / 255F);
-        Tessellator.instance.startDrawingQuads();
-    }
-
-    private void endShape(boolean blend, boolean cull) {
-        Tessellator.instance.draw();
-        if (cull) {
-            GL11.glEnable(GL11.GL_CULL_FACE);
-        }
-        if (!blend) {
-            GL11.glDisable(GL11.GL_BLEND);
-        }
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
-        GL11.glColor4f(1F, 1F, 1F, 1F);
+    private void drawSegment(int[] from, int[] to, int offset, int color) {
+        drawColoredRect(
+                Math.min(from[0], to[0]) + offset,
+                Math.min(from[1], to[1]) + offset,
+                Math.abs(to[0] - from[0]) + LINE_WIDTH,
+                Math.abs(to[1] - from[1]) + LINE_WIDTH,
+                color);
     }
 
     private void startClipping(int x, int y, int w, int h) {
