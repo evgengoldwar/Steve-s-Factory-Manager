@@ -154,6 +154,8 @@ public class GuiManager extends GuiBase {
     private int sidebarButtonW;
     private int sidebarLabelW;
     private String[] sidebarLabels = new String[0];
+    // where in the side bar each button is placed, -1 for buttons that aren't shown
+    private int[] buttonSlots = new int[0];
     private int infoX;
     private int infoY;
     private int infoW;
@@ -193,9 +195,17 @@ public class GuiManager extends GuiBase {
 
         // the side bar lists the buttons with their names, as wide as the longest name allows
         sidebarLabelW = 0;
-        for (TileEntityManager.Button button : manager.buttons) {
-            sidebarLabelW = Math
-                    .max(sidebarLabelW, (int) Math.ceil(getStringWidth(button.getLabel()) * SIDEBAR_TEXT_SCALE));
+        buttonSlots = new int[manager.buttons.size()];
+        int sidebarButtons = 0;
+        for (int i = 0; i < buttonSlots.length; i++) {
+            TileEntityManager.Button button = manager.buttons.get(i);
+            if (button.isInSidebar()) {
+                buttonSlots[i] = sidebarButtons++;
+                sidebarLabelW = Math
+                        .max(sidebarLabelW, (int) Math.ceil(getStringWidth(button.getLabel()) * SIDEBAR_TEXT_SCALE));
+            } else {
+                buttonSlots[i] = -1;
+            }
         }
         sidebarLabelW = Math.min(SIDEBAR_LABEL_MAX, sidebarLabelW);
         sidebarLabels = new String[manager.buttons.size()];
@@ -208,7 +218,7 @@ public class GuiManager extends GuiBase {
         sidebarY = top;
         sidebarH = infoY - 4 - top;
         buttonRows = Math.max(1, (sidebarH - 6 - SIDEBAR_BUTTON_H) / SIDEBAR_SPACING + 1);
-        int buttonColumns = Math.max(1, (manager.buttons.size() + buttonRows - 1) / buttonRows);
+        int buttonColumns = Math.max(1, (sidebarButtons + buttonRows - 1) / buttonRows);
         sidebarW = 4 + buttonColumns * (sidebarButtonW + 2);
 
         canvasX = sidebarX + sidebarW + 6;
@@ -368,7 +378,7 @@ public class GuiManager extends GuiBase {
         if (useButtons) {
             for (int i = 0; i < manager.buttons.size(); i++) {
                 TileEntityManager.Button button = manager.buttons.get(i);
-                if (button.isVisible()) {
+                if (isShownInSidebar(i)) {
                     int buttonX = getButtonX(i);
                     int buttonY = getButtonY(i);
                     boolean hover = isOnButton(i, x, y);
@@ -399,7 +409,7 @@ public class GuiManager extends GuiBase {
             if (useButtons) {
                 for (int i = 0; i < manager.buttons.size(); i++) {
                     TileEntityManager.Button button = manager.buttons.get(i);
-                    if (button.isVisible() && isOnButton(i, x, y)) {
+                    if (isOnButton(i, x, y)) {
                         drawMouseOver(button.getMouseOver(), x, y);
                     }
                 }
@@ -1092,15 +1102,20 @@ public class GuiManager extends GuiBase {
     }
 
     private int getButtonX(int id) {
-        return sidebarX + 3 + (id / buttonRows) * (sidebarButtonW + 2);
+        return sidebarX + 3 + (buttonSlots[id] / buttonRows) * (sidebarButtonW + 2);
     }
 
     private int getButtonY(int id) {
-        return sidebarY + 3 + (id % buttonRows) * SIDEBAR_SPACING;
+        return sidebarY + 3 + (buttonSlots[id] % buttonRows) * SIDEBAR_SPACING;
+    }
+
+    private boolean isShownInSidebar(int id) {
+        return id < buttonSlots.length && buttonSlots[id] != -1 && manager.buttons.get(id).isVisible();
     }
 
     private boolean isOnButton(int id, int x, int y) {
-        return CollisionHelper.inBounds(getButtonX(id), getButtonY(id), sidebarButtonW - 1, SIDEBAR_BUTTON_H - 1, x, y);
+        return isShownInSidebar(id) && CollisionHelper
+                .inBounds(getButtonX(id), getButtonY(id), sidebarButtonW - 1, SIDEBAR_BUTTON_H - 1, x, y);
     }
 
     private int getSpecialOffsetX() {
@@ -1393,6 +1408,13 @@ public class GuiManager extends GuiBase {
             contextComponent = null;
         }
 
+        // clicking anywhere but the name field of a renamed command saves the name
+        for (FlowComponent component : manager.getFlowItems()) {
+            if (component.isEditingName() && !component.isOnNameField(this, toWorldX(x), toWorldY(y))) {
+                component.finishRenaming(true);
+            }
+        }
+
         int tool = getToolAt(x, y);
         if (tool != -1) {
             if (button == 0) {
@@ -1452,7 +1474,7 @@ public class GuiManager extends GuiBase {
     private void onClickButtonCheck(int x, int y, boolean release) {
         for (int i = 0; i < manager.buttons.size(); i++) {
             TileEntityManager.Button guiButton = manager.buttons.get(i);
-            if (guiButton.isVisible() && isOnButton(i, x, y) && guiButton.activateOnRelease() == release) {
+            if (isOnButton(i, x, y) && guiButton.activateOnRelease() == release) {
                 DataWriter dw = PacketHandler.getButtonPacketWriter();
                 dw.writeData(i, DataBitHelper.GUI_BUTTON_ID);
                 if (guiButton.onClick(dw)) {
@@ -1705,6 +1727,14 @@ public class GuiManager extends GuiBase {
             if (contextComponent != null && k == Keyboard.KEY_ESCAPE) {
                 contextComponent = null;
                 return;
+            }
+
+            // a command being renamed gets all keys, so escape cancels the renaming instead of closing
+            for (FlowComponent component : manager.getFlowItems()) {
+                if (component.isVisible() && component.isEditingName()) {
+                    component.onKeyStroke(this, c, k);
+                    return;
+                }
             }
 
             if (k == 54 && !doubleShiftFlag) {

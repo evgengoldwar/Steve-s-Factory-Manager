@@ -126,8 +126,9 @@ public class TileEntityManager extends TileEntity implements ITileEntityInterfac
             }
 
             @Override
-            public String getLabel() {
-                return Localization.DELETE_LABEL.toString();
+            public boolean isInSidebar() {
+                // commands are deleted from their context menu instead
+                return false;
             }
         });
 
@@ -769,6 +770,10 @@ public class TileEntityManager extends TileEntity implements ITileEntityInterfac
 
         public String getLabel() {
             return mouseOver.toString();
+        }
+
+        public boolean isInSidebar() {
+            return true;
         }
 
         public boolean activateOnRelease() {

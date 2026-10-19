@@ -1,7 +1,6 @@
 # Only the newer strings are translated, everything else falls back to en_US
 gui.sfm.Zoom=Масштаб
 gui.sfm.ManagerTitle=Редактор узлов
-gui.sfm.DeleteLabel=Удалить
 gui.sfm.ContextOpen=Развернуть
 gui.sfm.ContextClose=Свернуть
 gui.sfm.ContextRename=Переименовать

@@ -327,7 +327,6 @@ public enum Localization {
     SETTINGS,
     ZOOM,
     MANAGER_TITLE,
-    DELETE_LABEL,
     CONTEXT_OPEN,
     CONTEXT_CLOSE,
     CONTEXT_RENAME,

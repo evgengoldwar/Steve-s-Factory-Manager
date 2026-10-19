@@ -361,7 +361,6 @@ gui.sfm.Preferences=用户偏好设定
 gui.sfm.Settings=管理者设定
 gui.sfm.Zoom=缩放
 gui.sfm.ManagerTitle=节点编辑器
-gui.sfm.DeleteLabel=删除
 gui.sfm.ContextOpen=展开
 gui.sfm.ContextClose=收起
 gui.sfm.ContextRename=重命名

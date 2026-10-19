@@ -361,7 +361,6 @@ gui.sfm.Preferences=User Preferences
 gui.sfm.Settings=Manager Settings
 gui.sfm.Zoom=Zoom
 gui.sfm.ManagerTitle=Node Editor
-gui.sfm.DeleteLabel=Delete
 gui.sfm.ContextOpen=Open
 gui.sfm.ContextClose=Close
 gui.sfm.ContextRename=Rename

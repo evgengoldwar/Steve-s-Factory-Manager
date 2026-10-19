@@ -11,6 +11,7 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 
+import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
 import cpw.mods.fml.relauncher.Side;
@@ -80,16 +81,12 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     private static final int TEXT_Y = 8;
     private static final int TEXT_Y_SECOND_LINE = 11;
     private static final int TYPE_Y = 4;
-    private static final int TEXT_HEIGHT = 10;
-    private static final int EDIT_SRC_X = 32;
-    private static final int EDIT_SRC_Y = 189;
-    private static final int EDIT_X = 103;
-    private static final int EDIT_Y = 6;
-    private static final int EDIT_X_SMALL = 105;
-    private static final int EDIT_Y_TOP = 2;
-    private static final int EDIT_Y_BOT = 11;
-    private static final int EDIT_SIZE = 9;
-    private static final int EDIT_SIZE_SMALL = 7;
+    // the name is edited in a field placed on top of the title
+    private static final int NAME_FIELD_X = TEXT_X - 3;
+    private static final int NAME_FIELD_Y = TEXT_Y - 3;
+    private static final int NAME_FIELD_H = 11;
+    private static final int NAME_FIELD_MIN_W = 44;
+    private static final int COLOR_NAME_FIELD_BORDER = 0xFF5BCB3B;
 
     private static final int TEXT_SPACE = 118;
     private static final int TEXT_SPACE_SHORT = 48;
@@ -456,64 +453,35 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
             }
         }
 
-        // small commands showing their type use two lines
-        boolean showType = !isLarge && name != null && Settings.isCommandTypes() && !GuiScreen.isCtrlKeyDown();
-        int textY = y + (showType ? TEXT_Y_SECOND_LINE : TEXT_Y);
-        if (!isEditing || isLarge) {
-            String name = getDisplayName(gui, !isLarge);
-            gui.drawShadowString(name, x + TEXT_X, textY, 0.7F, isEditing ? COLOR_TITLE_EDITING : COLOR_TITLE);
-        }
-
         if (isEditing) {
-            gui.drawShadowString(getShortName(gui, getName()), x + TEXT_X, textY, 0.7F, COLOR_EDITING);
-        }
-
-        if (showType) {
-            gui.drawCenteredString(
-                    getType().getName(),
-                    x + DRAGGABLE_SIZE,
-                    y + TYPE_Y,
+            // the name field may be wider than the command to fit the name
+            gui.drawSlot(
+                    x + NAME_FIELD_X,
+                    y + NAME_FIELD_Y,
+                    getNameFieldWidth(gui),
+                    NAME_FIELD_H,
+                    COLOR_NAME_FIELD_BORDER);
+            gui.drawShadowString(textBox.getText(), x + TEXT_X, y + TEXT_Y, 0.7F, COLOR_EDITING);
+            gui.drawCursor(
+                    x + TEXT_X + (int) ((textBox.getCursorPosition(gui) + CURSOR_X) * 0.7F),
+                    y + TEXT_Y + (int) (CURSOR_Y * 0.7F),
+                    CURSOR_Z,
                     0.7F,
-                    getComponentWidth() - DRAGGABLE_SIZE - ARROW_SIZE_W,
-                    COLOR_TYPE);
-        }
+                    0xFFFFFFFF);
+        } else {
+            // small commands showing their type use two lines
+            boolean showType = !isLarge && name != null && Settings.isCommandTypes() && !GuiScreen.isCtrlKeyDown();
+            int textY = y + (showType ? TEXT_Y_SECOND_LINE : TEXT_Y);
+            gui.drawShadowString(getDisplayName(gui, !isLarge), x + TEXT_X, textY, 0.7F, COLOR_TITLE);
 
-        if (isLarge) {
-            if (isEditing) {
-                gui.drawCursor(
-                        x + TEXT_X + (int) ((textBox.getCursorPosition(gui) + CURSOR_X) * 0.7F),
-                        y + TEXT_Y + (int) (CURSOR_Y * 0.7F),
-                        CURSOR_Z,
+            if (showType) {
+                gui.drawCenteredString(
+                        getType().getName(),
+                        x + DRAGGABLE_SIZE,
+                        y + TYPE_Y,
                         0.7F,
-                        0xFFFFFFFF);
-                for (int i = 0; i < 2; i++) {
-                    int buttonX = x + EDIT_X_SMALL;
-                    int buttonY = y + (i == 0 ? EDIT_Y_TOP : EDIT_Y_BOT);
-
-                    int srcXButton = CollisionHelper
-                            .inBounds(buttonX, buttonY, EDIT_SIZE_SMALL, EDIT_SIZE_SMALL, mX, mY) ? 1 : 0;
-                    int srcYButton = i;
-
-                    gui.drawTexture(
-                            buttonX,
-                            buttonY,
-                            EDIT_SRC_X + srcXButton * EDIT_SIZE_SMALL,
-                            EDIT_SRC_Y + EDIT_SIZE + EDIT_SIZE_SMALL * srcYButton,
-                            EDIT_SIZE_SMALL,
-                            EDIT_SIZE_SMALL);
-                }
-            } else {
-                int buttonX = x + EDIT_X;
-                int buttonY = y + EDIT_Y;
-                int srcXButton = CollisionHelper.inBounds(buttonX, buttonY, EDIT_SIZE, EDIT_SIZE, mX, mY) ? 1 : 0;
-
-                gui.drawTexture(
-                        buttonX,
-                        buttonY,
-                        EDIT_SRC_X + srcXButton * EDIT_SIZE,
-                        EDIT_SRC_Y,
-                        EDIT_SIZE,
-                        EDIT_SIZE);
+                        getComponentWidth() - DRAGGABLE_SIZE - ARROW_SIZE_W,
+                        COLOR_TYPE);
             }
         }
 
@@ -555,9 +523,36 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
     @SideOnly(Side.CLIENT)
     public void startRenaming() {
-        isLarge = true;
         isEditing = true;
         textBox.setTextAndCursor(getName());
+    }
+
+    @SideOnly(Side.CLIENT)
+    public void finishRenaming(boolean save) {
+        if (!isEditing) {
+            return;
+        }
+        isEditing = false;
+        if (save) {
+            name = textBox.getText();
+            if (name.equals("")) {
+                name = null;
+            }
+            sendNameToServer();
+        }
+        textBox.setText(null);
+    }
+
+    @SideOnly(Side.CLIENT)
+    private int getNameFieldWidth(GuiManager gui) {
+        String text = textBox.getText() == null ? "" : textBox.getText();
+        return Math.max(NAME_FIELD_MIN_W, (int) (gui.getStringWidth(text) * 0.7F) + 8);
+    }
+
+    @SideOnly(Side.CLIENT)
+    public boolean isOnNameField(GuiManager gui, int mX, int mY) {
+        return isEditing && CollisionHelper
+                .inBounds(x + NAME_FIELD_X, y + NAME_FIELD_Y, getNameFieldWidth(gui), NAME_FIELD_H, mX, mY);
     }
 
     private boolean isHighlighted(int mX, int mY) {
@@ -716,81 +711,48 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                 mouseStartX = mouseDragX = mX;
                 mouseStartY = mouseDragY = mY;
                 isDragging = true;
-            } else if (isLarge && !isEditing
-                    && CollisionHelper.inBounds(EDIT_X, EDIT_Y, EDIT_SIZE, EDIT_SIZE, internalX, internalY)) {
-                        isEditing = true;
-                        textBox.setTextAndCursor(getName());
+            } else if (isEditing && CollisionHelper
+                    .inBounds(NAME_FIELD_X, NAME_FIELD_Y, TEXT_SPACE, NAME_FIELD_H, internalX, internalY)) {
+                        if (button == 1) {
+                            textBox.setTextAndCursor("");
+                        }
                     } else
-                if (isLarge && isEditing
-                        && CollisionHelper.inBounds(
-                                EDIT_X_SMALL,
-                                EDIT_Y_TOP,
-                                EDIT_SIZE_SMALL,
-                                EDIT_SIZE_SMALL,
-                                internalX,
-                                internalY)) {
-                                    isEditing = false;
-                                    name = textBox.getText();
-                                    if (name.equals("")) {
-                                        name = null;
-                                    }
-                                    sendNameToServer();
-                                    textBox.setText(null);
-                                } else
-                    if (isLarge && isEditing
-                            && CollisionHelper.inBounds(
-                                    EDIT_X_SMALL,
-                                    EDIT_Y_BOT,
-                                    EDIT_SIZE_SMALL,
-                                    EDIT_SIZE_SMALL,
-                                    internalX,
-                                    internalY)) {
-                                        isEditing = false;
-                                        textBox.setText(null);
-                                    } else
-                        if (isLarge && isEditing
-                                && CollisionHelper
-                                        .inBounds(TEXT_X, TEXT_Y, TEXT_SPACE, TEXT_HEIGHT, internalX, internalY)) {
-                                            if (button == 1) {
-                                                textBox.setTextAndCursor("");
-                                            }
-                                        } else
-                            if (inArrowBounds(internalX, internalY) || ((Settings.isLargeOpenHitBox() || button == 0)
-                                    && internalY < COMPONENT_SIZE_H)) {
-                                        if (!isLarge && type == ComponentType.GROUP
-                                                && Settings.isQuickGroupOpen()
-                                                && !GuiScreen.isShiftKeyDown()) {
-                                            manager.setSelectedComponent(this);
-                                        } else {
-                                            isLarge = !isLarge;
-                                        }
-                                    } else
-                                if (isLarge) {
+                if (inArrowBounds(internalX, internalY)
+                        || ((Settings.isLargeOpenHitBox() || button == 0) && internalY < COMPONENT_SIZE_H)) {
+                            if (!isLarge && type == ComponentType.GROUP
+                                    && Settings.isQuickGroupOpen()
+                                    && !GuiScreen.isShiftKeyDown()) {
+                                manager.setSelectedComponent(this);
+                            } else {
+                                isLarge = !isLarge;
+                            }
+                        } else
+                    if (isLarge) {
 
-                                    for (int i = 0; i < menus.size(); i++) {
-                                        ComponentMenu menu = menus.get(i);
+                        for (int i = 0; i < menus.size(); i++) {
+                            ComponentMenu menu = menus.get(i);
 
-                                        if (menu.isVisible()) {
-                                            if (inMenuArrowBounds(i, internalX, internalY)
-                                                    || ((Settings.isLargeOpenHitBoxMenu() || button == 0)
-                                                            && internalY >= getMenuItemY(i)
-                                                            && internalY <= getMenuItemY(i) + MENU_ITEM_SIZE_H)) {
-                                                if (openMenuId == i) {
-                                                    openMenuId = -1;
-                                                } else {
-                                                    openMenuId = i;
-                                                }
-
-                                                return true;
-                                            }
-
-                                            if (i == openMenuId) {
-                                                menu.onClick(mX - getMenuAreaX(), mY - getMenuAreaY(i), button);
-                                            }
-                                        }
+                            if (menu.isVisible()) {
+                                if (inMenuArrowBounds(i, internalX, internalY)
+                                        || ((Settings.isLargeOpenHitBoxMenu() || button == 0)
+                                                && internalY >= getMenuItemY(i)
+                                                && internalY <= getMenuItemY(i) + MENU_ITEM_SIZE_H)) {
+                                    if (openMenuId == i) {
+                                        openMenuId = -1;
+                                    } else {
+                                        openMenuId = i;
                                     }
 
+                                    return true;
                                 }
+
+                                if (i == openMenuId) {
+                                    menu.onClick(mX - getMenuAreaX(), mY - getMenuAreaY(i), button);
+                                }
+                            }
+                        }
+
+                    }
             return true;
         } else {
             int outputCount = 0;
@@ -1242,8 +1204,14 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
     @SideOnly(Side.CLIENT)
     public boolean onKeyStroke(GuiManager gui, char c, int k) {
-        if (isLarge && isEditing) {
-            textBox.onKeyStroke(gui, c, k);
+        if (isEditing) {
+            if (k == Keyboard.KEY_RETURN || k == Keyboard.KEY_NUMPADENTER) {
+                finishRenaming(true);
+            } else if (k == Keyboard.KEY_ESCAPE) {
+                finishRenaming(false);
+            } else {
+                textBox.onKeyStroke(gui, c, k);
+            }
             return true;
         } else if (isLarge && openMenuId != -1) {
             return menus.get(openMenuId).onKeyStroke(gui, c, k);
