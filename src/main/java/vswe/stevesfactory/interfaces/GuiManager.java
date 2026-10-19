@@ -70,9 +70,8 @@ public class GuiManager extends GuiBase {
     private static final int SIDEBAR_LABEL_MAX = 80;
     private static final float SIDEBAR_TEXT_SCALE = 0.75F;
     private static final int CONTEXT_ITEM_HEIGHT = 14;
-    private static final int CONTEXT_TOGGLE = 0;
-    private static final int CONTEXT_RENAME = 1;
-    private static final int CONTEXT_DELETE = 2;
+    private static final int CONTEXT_RENAME = 0;
+    private static final int CONTEXT_DELETE = 1;
 
     private static final float MIN_ZOOM = 0.25F;
     private static final float MAX_ZOOM = 2F;
@@ -522,9 +521,6 @@ public class GuiManager extends GuiBase {
 
     private List<String> getContextItems() {
         List<String> items = new ArrayList<String>();
-        items.add(
-                contextComponent.isOpen() ? Localization.CONTEXT_CLOSE.toString()
-                        : Localization.CONTEXT_OPEN.toString());
         items.add(Localization.CONTEXT_RENAME.toString());
         items.add(Localization.CONTEXT_DELETE.toString());
         return items;
@@ -582,10 +578,6 @@ public class GuiManager extends GuiBase {
         FlowComponent component = contextComponent;
         contextComponent = null;
         switch (item) {
-            case CONTEXT_TOGGLE:
-                component.setOpen(!component.isOpen());
-                bringToFront(component);
-                break;
             case CONTEXT_RENAME:
                 component.startRenaming();
                 bringToFront(component);
