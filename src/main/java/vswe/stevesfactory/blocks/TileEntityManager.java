@@ -73,6 +73,9 @@ public class TileEntityManager extends TileEntity implements ITileEntityInterfac
     private FlowComponent selectedComponent;
     @SideOnly(Side.CLIENT)
     public IInterfaceRenderer specialRenderer;
+    // where new commands are placed, kept up to date by the interface so new commands appear in the visible area
+    public int spawnX = 50;
+    public int spawnY = 50;
 
     public TileEntityManager() {
         items = new ArrayList<FlowComponent>();
@@ -782,6 +785,8 @@ public class TileEntityManager extends TileEntity implements ITileEntityInterfac
                 boolean autoSide = dr.readBoolean();
                 boolean autoBlackList = dr.readBoolean();
                 boolean moveFirst = dr.readBoolean();
+                component.setX(dr.readData(DataBitHelper.FLOW_CONTROL_X));
+                component.setY(dr.readData(DataBitHelper.FLOW_CONTROL_Y));
                 boolean isInput = type == ComponentType.INPUT || type == ComponentType.LIQUID_INPUT;
                 boolean isOutput = type == ComponentType.OUTPUT || type == ComponentType.LIQUID_OUTPUT;
                 if (autoSide) {
@@ -825,6 +830,8 @@ public class TileEntityManager extends TileEntity implements ITileEntityInterfac
             dw.writeBoolean(Settings.isAutoSide());
             dw.writeBoolean(Settings.isAutoBlacklist());
             dw.writeBoolean(Settings.isPriorityMoveFirst());
+            dw.writeData(FlowComponent.clampPositionX(spawnX), DataBitHelper.FLOW_CONTROL_X);
+            dw.writeData(FlowComponent.clampPositionY(spawnY), DataBitHelper.FLOW_CONTROL_Y);
 
             return true;
         }

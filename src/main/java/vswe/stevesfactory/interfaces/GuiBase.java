@@ -185,6 +185,11 @@ public abstract class GuiBase extends GuiAntiNEI {
 
     public void drawMouseOver(IAdvancedTooltip tooltip, int x, int y, int mX, int mY) {
         if (tooltip != null) {
+            x = toTooltipX(x);
+            y = toTooltipY(y);
+            mX = toTooltipX(mX);
+            mY = toTooltipY(mY);
+
             GL11.glDisable(GL12.GL_RESCALE_NORMAL);
             RenderHelper.disableStandardItemLighting();
             GL11.glDisable(GL11.GL_LIGHTING);
@@ -256,8 +261,44 @@ public abstract class GuiBase extends GuiAntiNEI {
 
     public void drawMouseOver(List lst, int x, int y) {
         if (lst != null) {
-            drawHoveringText(lst, x + guiLeft, y + guiTop, fontRendererObj);
+            drawHoveringText(lst, toTooltipX(x) + guiLeft, toTooltipY(y) + guiTop, fontRendererObj);
         }
+    }
+
+    // Tooltips are rendered without the zoom/pan transform of the canvas, so coordinates given in canvas space have
+    // to be converted into regular interface coordinates before the tooltip is drawn.
+    private float tooltipOffsetX;
+    private float tooltipOffsetY;
+    private float tooltipScale = 1F;
+
+    protected void setTooltipTransform(float offsetX, float offsetY, float scale) {
+        tooltipOffsetX = offsetX;
+        tooltipOffsetY = offsetY;
+        tooltipScale = scale;
+    }
+
+    protected void resetTooltipTransform() {
+        setTooltipTransform(0, 0, 1F);
+    }
+
+    private int toTooltipX(int x) {
+        return (int) Math.floor(tooltipOffsetX + x * tooltipScale);
+    }
+
+    private int toTooltipY(int y) {
+        return (int) Math.floor(tooltipOffsetY + y * tooltipScale);
+    }
+
+    public void drawColoredRect(int x, int y, int w, int h, int color) {
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND);
+        Gui.drawRect(guiLeft + x, guiTop + y, guiLeft + x + w, guiTop + y + h, color);
+        if (blend) {
+            GL11.glEnable(GL11.GL_BLEND);
+        }
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
     }
 
     public void drawBlock(TileEntity te, int x, int y) {

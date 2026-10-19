@@ -5,8 +5,8 @@ import static vswe.stevesfactory.compat.Compat.HAS_ADDONS;
 public enum DataBitHelper {
 
     FLOW_CONTROL_COUNT(9),
-    FLOW_CONTROL_X(9),
-    FLOW_CONTROL_Y(8),
+    FLOW_CONTROL_X(12),
+    FLOW_CONTROL_Y(12),
     FLOW_CONTROL_TYPE_ID(5),
     MENU_ITEM_ID(16),
     MENU_ITEM_META(15),

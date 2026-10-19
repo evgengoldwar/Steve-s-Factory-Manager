@@ -103,6 +103,21 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     private static final int TEXT_SPACE_SHORT = 65;
     private static final int TEXT_MAX_LENGTH = 31;
 
+    private static final int SHADOW_SIZE = 2;
+    private static final int SHADOW_SIZE_DRAGGING = 4;
+    private static final int SHADOW_COLOR = 0x70000000;
+
+    public static final int MAX_POSITION_X = (1 << DataBitHelper.FLOW_CONTROL_X.getBitCount()) - 1;
+    public static final int MAX_POSITION_Y = (1 << DataBitHelper.FLOW_CONTROL_Y.getBitCount()) - 1;
+
+    public static int clampPositionX(int x) {
+        return Math.max(0, Math.min(MAX_POSITION_X, x));
+    }
+
+    public static int clampPositionY(int y) {
+        return Math.max(0, Math.min(MAX_POSITION_Y, y));
+    }
+
     public FlowComponent(TileEntityManager manager, int x, int y, ComponentType type) {
         this.x = x;
         this.y = y;
@@ -231,6 +246,12 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         GL11.glPushMatrix();
         GL11.glTranslatef(0, 0, zLevel);
 
+        // the shadow shouldn't hide the commands below it, so it is not written to the depth buffer
+        int shadow = isDragging ? SHADOW_SIZE_DRAGGING : SHADOW_SIZE;
+        GL11.glDepthMask(false);
+        gui.drawColoredRect(x + shadow, y + shadow, getComponentWidth(), getComponentHeight(), SHADOW_COLOR);
+        GL11.glDepthMask(true);
+
         gui.drawTexture(
                 x,
                 y,
@@ -321,9 +342,10 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
             Connection current = manager.getCurrentlyConnecting();
             if (current != null && current.getComponentId() == id && current.getConnectionId() == i) {
-                gui.drawLine(
+                gui.drawConnectionPreview(
                         location[0] + connectionWidth / 2,
                         location[1] + connectionHeight / 2,
+                        connection.getType(),
                         overrideX != -1 ? overrideX : mX,
                         overrideY != -1 ? overrideY : mY);
             }
@@ -338,34 +360,39 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                     if (otherLocation == null) {
                         continue;
                     }
+                    FlowComponent other = manager.getFlowItems().get(connectedConnection.getComponentId());
+                    ConnectionOption otherOption = other.connectionSet.getConnections()[connectedConnection
+                            .getConnectionId()];
                     int startX = location[0] + connectionWidth / 2;
                     int startY = location[1] + connectionHeight / 2;
-                    int endX = otherLocation[0] + connectionWidth / 2;
-                    int endY = otherLocation[1] + connectionHeight / 2;
+                    int endX = otherLocation[0] + otherLocation[3] / 2;
+                    int endY = otherLocation[1] + otherLocation[4] / 2;
 
                     GL11.glPushMatrix();
                     GL11.glTranslatef(0, 0, -zLevel);
                     List<Point> nodes = connectedConnection.getNodes();
-                    for (int j = 0; j <= nodes.size(); j++) {
-                        int x1, y1, x2, y2;
-                        if (j == 0) {
-                            x1 = startX;
-                            y1 = startY;
-                        } else {
-                            x1 = nodes.get(j - 1).getX();
-                            y1 = nodes.get(j - 1).getY();
-                        }
-
-                        if (j == nodes.size()) {
-                            x2 = endX;
-                            y2 = endY;
-                        } else {
-                            x2 = nodes.get(j).getX();
-                            y2 = nodes.get(j).getY();
-                        }
-
-                        gui.drawLine(x1, y1, x2, y2);
+                    int[] pathX = new int[nodes.size() + 2];
+                    int[] pathY = new int[nodes.size() + 2];
+                    pathX[0] = startX;
+                    pathY[0] = startY;
+                    for (int j = 0; j < nodes.size(); j++) {
+                        pathX[j + 1] = nodes.get(j).getX();
+                        pathY[j + 1] = nodes.get(j).getY();
                     }
+                    pathX[pathX.length - 1] = endX;
+                    pathY[pathY.length - 1] = endY;
+
+                    // the color is decided by the output end, since that is what describes the connection
+                    ConnectionOption outputOption = connection.isInput() ? otherOption : connection;
+                    boolean highlight = isHighlighted(mX, mY) || other.isHighlighted(mX, mY);
+                    gui.drawConnection(
+                            pathX,
+                            pathY,
+                            connection.getType(),
+                            otherOption.getType(),
+                            outputOption,
+                            highlight,
+                            !connection.isInput());
 
                     for (Point node : nodes) {
                         int x = node.getX() - NODE_SIZE / 2;
@@ -469,6 +496,11 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         }
 
         GL11.glPopMatrix();
+    }
+
+    private boolean isHighlighted(int mX, int mY) {
+        return isDragging
+                || (isVisible() && mX >= x && mX < x + getComponentWidth() && mY >= y && mY < y + getComponentHeight());
     }
 
     private String cachedName;
@@ -935,6 +967,9 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         if (isDragging) {
             x += mX - mouseDragX;
             y += mY - mouseDragY;
+
+            x = clampPositionX(x);
+            y = clampPositionY(y);
 
             if (GuiScreen.isShiftKeyDown()) {
                 adjustToGrid();

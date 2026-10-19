@@ -52,8 +52,8 @@ public class Connection {
     @SideOnly(Side.CLIENT)
     public void update(int mX, int mY) {
         if (selectedNode != null) {
-            selectedNode.setX(mX);
-            selectedNode.setY(mY);
+            selectedNode.setX(FlowComponent.clampPositionX(mX));
+            selectedNode.setY(FlowComponent.clampPositionY(mY));
 
             if (GuiScreen.isShiftKeyDown()) {
                 selectedNode.adjustToGrid();

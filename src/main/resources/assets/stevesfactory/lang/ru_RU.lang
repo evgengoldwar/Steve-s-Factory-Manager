@@ -1,0 +1,11 @@
+# Only the newer strings are translated, everything else falls back to en_US
+gui.sfm.Zoom=Масштаб
+gui.sfm.ViewFit=Показать все команды (Home)
+gui.sfm.ViewResetZoom=Сбросить масштаб до 100%
+gui.sfm.ViewGrid=Показать/скрыть сетку
+gui.sfm.ViewMinimap=Показать/скрыть миникарту
+gui.sfm.ViewHelp=Управление
+gui.sfm.ViewHelpPan=Перетаскивайте пустое место или зажмите среднюю кнопку мыши, чтобы перемещаться
+gui.sfm.ViewHelpZoom=Колесо мыши над пустым местом (или Ctrl + колесо) меняет масштаб
+gui.sfm.ViewHelpKeys=Стрелки двигают вид, + и - меняют масштаб, Home показывает все команды
+gui.sfm.ViewHelpCancel=ПКМ по пустому месту отменяет создаваемое соединение
