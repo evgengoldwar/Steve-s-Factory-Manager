@@ -114,17 +114,16 @@ public class GuiManager extends GuiBase {
     private static final int COLOR_ICON = 0xFFEAE8E9;
     private static final int COLOR_ICON_ACTIVE = 0xFF30A859;
 
-    private static final int COLOR_CONNECTION_OUTLINE = 0xFF07070C;
+    private static final int COLOR_CONNECTION = 0xFFA8A8AA;
+    private static final int COLOR_CONNECTION_SHADOW = 0xFF050508;
     private static final int COLOR_CONNECTION_PREVIEW = 0xFFFFFF55;
 
-    private static final float CONNECTION_WIDTH = 1F;
-    private static final float CONNECTION_WIDTH_HIGHLIGHT = 1.6F;
-    private static final float CONNECTION_OUTLINE = 1F;
-    private static final float CONNECTION_GLOW = 5F;
-    private static final float FLOW_SPACING = 14F;
-    private static final float FLOW_SPEED = 16F;
-    private static final float FLOW_SPEED_HIGHLIGHT = 36F;
-    private static final float FLOW_SIZE = 1.5F;
+    private static final int ROUTE_OFFSET = 6;
+    private static final int ROUTE_DETOUR = 72;
+    private static final int PULSE_SPACING = 10;
+    private static final int PULSE_LENGTH = 3;
+    private static final float PULSE_SPEED = 12F;
+    private static final float PULSE_SPEED_HIGHLIGHT = 30F;
 
     // views are remembered per manager and per group while the game is running
     private static final Map<TileEntityManager, Map<Integer, float[]>> savedViews = new WeakHashMap<TileEntityManager, Map<Integer, float[]>>();
@@ -584,7 +583,9 @@ public class GuiManager extends GuiBase {
                         + "\n"
                         + Localization.VIEW_HELP_KEYS.toString()
                         + "\n"
-                        + Localization.VIEW_HELP_CANCEL.toString();
+                        + Localization.VIEW_HELP_CANCEL.toString()
+                        + "\n"
+                        + Localization.VIEW_HELP_OPEN.toString();
         }
     }
 
@@ -674,25 +675,15 @@ public class GuiManager extends GuiBase {
 
     public void drawConnection(int[] pathX, int[] pathY, ConnectionOption.ConnectionType startType,
             ConnectionOption.ConnectionType endType, ConnectionOption colorOption, boolean highlight, boolean forward) {
-        float[][] path;
-        if (pathX.length == 2) {
-            path = createCurve(pathX[0], pathY[0], startType, pathX[1], pathY[1], endType);
-        } else {
-            path = new float[2][pathX.length];
-            for (int i = 0; i < pathX.length; i++) {
-                path[0][i] = pathX[i];
-                path[1][i] = pathY[i];
-            }
-        }
-
         int color = getConnectionColor(colorOption);
-        float width = highlight ? CONNECTION_WIDTH_HIGHLIGHT : CONNECTION_WIDTH;
         if (highlight) {
-            drawPath(path, CONNECTION_GLOW, (color & 0xFFFFFF) | 0x50000000);
+            color = getLighterColor(color);
         }
-        drawPath(path, width + CONNECTION_OUTLINE * 2, COLOR_CONNECTION_OUTLINE);
-        drawPath(path, width, color);
-        drawFlow(path, forward, highlight ? FLOW_SPEED_HIGHLIGHT : FLOW_SPEED, getLighterColor(color));
+        drawRoute(
+                createRoute(pathX, pathY, startType, endType),
+                color,
+                forward,
+                highlight ? PULSE_SPEED_HIGHLIGHT : PULSE_SPEED);
     }
 
     public void drawConnectionPreview(int startX, int startY, ConnectionOption.ConnectionType startType, int endX,
@@ -700,15 +691,16 @@ public class GuiManager extends GuiBase {
         ConnectionOption.ConnectionType endType = startType == ConnectionOption.ConnectionType.INPUT
                 ? ConnectionOption.ConnectionType.OUTPUT
                 : ConnectionOption.ConnectionType.INPUT;
-        float[][] path = createCurve(startX, startY, startType, endX, endY, endType);
-        drawPath(path, CONNECTION_WIDTH + CONNECTION_OUTLINE * 2, COLOR_CONNECTION_OUTLINE);
-        drawPath(path, CONNECTION_WIDTH, COLOR_CONNECTION_PREVIEW);
-        drawFlow(path, startType != ConnectionOption.ConnectionType.INPUT, FLOW_SPEED_HIGHLIGHT, COLOR_PANEL_LIGHT);
+        drawRoute(
+                createRoute(new int[] { startX, endX }, new int[] { startY, endY }, startType, endType),
+                COLOR_CONNECTION_PREVIEW,
+                startType != ConnectionOption.ConnectionType.INPUT,
+                PULSE_SPEED_HIGHLIGHT);
     }
 
     private static int getConnectionColor(ConnectionOption option) {
         if (option == null) {
-            return 0xFFD8D8D8;
+            return COLOR_CONNECTION;
         }
         switch (option) {
             case CONDITION_TRUE:
@@ -731,7 +723,7 @@ public class GuiManager extends GuiBase {
             case BUD_LOW:
                 return 0xFFFFAA00;
             default:
-                return 0xFFD8D8D8;
+                return COLOR_CONNECTION;
         }
     }
 
@@ -745,11 +737,11 @@ public class GuiManager extends GuiBase {
         return 0xFF000000 | (r << 16) | (g << 8) | b;
     }
 
-    private static float getDirectionX(ConnectionOption.ConnectionType type) {
+    private static int getDirectionX(ConnectionOption.ConnectionType type) {
         return type == ConnectionOption.ConnectionType.SIDE ? 1 : 0;
     }
 
-    private static float getDirectionY(ConnectionOption.ConnectionType type) {
+    private static int getDirectionY(ConnectionOption.ConnectionType type) {
         if (type == ConnectionOption.ConnectionType.INPUT) {
             return -1;
         } else if (type == ConnectionOption.ConnectionType.OUTPUT) {
@@ -759,31 +751,150 @@ public class GuiManager extends GuiBase {
         }
     }
 
-    private static float[][] createCurve(float startX, float startY, ConnectionOption.ConnectionType startType,
-            float endX, float endY, ConnectionOption.ConnectionType endType) {
-        float dx = endX - startX;
-        float dy = endY - startY;
-        float distance = (float) Math.sqrt(dx * dx + dy * dy);
-        float handle = Math.max(12, Math.min(60, distance * 0.5F));
+    /**
+     * Creates a path of only horizontal and vertical lines, like the lines of the NEI crafting tree
+     */
+    private static List<int[]> createRoute(int[] pathX, int[] pathY, ConnectionOption.ConnectionType startType,
+            ConnectionOption.ConnectionType endType) {
+        List<int[]> route = new ArrayList<int[]>();
+        int last = pathX.length - 1;
+        int startX = pathX[0];
+        int startY = pathY[0];
+        int endX = pathX[last];
+        int endY = pathY[last];
 
-        float c1x = startX + getDirectionX(startType) * handle;
-        float c1y = startY + getDirectionY(startType) * handle;
-        float c2x = endX + getDirectionX(endType) * handle;
-        float c2y = endY + getDirectionY(endType) * handle;
+        // leave and enter the connection points straight
+        int[] exit = { startX + getDirectionX(startType) * ROUTE_OFFSET,
+                startY + getDirectionY(startType) * ROUTE_OFFSET };
+        int[] entry = { endX + getDirectionX(endType) * ROUTE_OFFSET, endY + getDirectionY(endType) * ROUTE_OFFSET };
 
-        int segments = Math.max(8, Math.min(40, (int) (distance / 6)));
-        float[][] path = new float[2][segments + 1];
-        for (int i = 0; i <= segments; i++) {
-            float t = i / (float) segments;
-            float u = 1 - t;
-            float a = u * u * u;
-            float b = 3 * u * u * t;
-            float c = 3 * u * t * t;
-            float d = t * t * t;
-            path[0][i] = a * startX + b * c1x + c * c2x + d * endX;
-            path[1][i] = a * startY + b * c1y + c * c2y + d * endY;
+        addRoutePoint(route, startX, startY);
+        addRoutePoint(route, exit[0], exit[1]);
+        if (last == 1) {
+            boolean vertical = getDirectionY(startType) != 0 && getDirectionY(endType) != 0;
+            boolean towardsEntry = getDirectionY(startType) * (entry[1] - exit[1]) >= 0;
+            if (vertical && towardsEntry) {
+                int middleY = (exit[1] + entry[1]) / 2;
+                addRoutePoint(route, exit[0], middleY);
+                addRoutePoint(route, entry[0], middleY);
+            } else if (getDirectionX(startType) != 0) {
+                addRoutePoint(route, entry[0], exit[1]);
+            } else {
+                // going back up, so pass beside the commands instead of through them
+                int middleX = Math.abs(exit[0] - entry[0]) < ROUTE_DETOUR ? Math.max(exit[0], entry[0]) + ROUTE_DETOUR
+                        : (exit[0] + entry[0]) / 2;
+                addRoutePoint(route, middleX, exit[1]);
+                addRoutePoint(route, middleX, entry[1]);
+            }
+        } else {
+            // nodes placed by the player are visited in order, turning once between each of them
+            int[] previous = exit;
+            for (int i = 1; i < last; i++) {
+                if (i == 1 && getDirectionX(startType) == 0) {
+                    addRoutePoint(route, previous[0], pathY[i]);
+                } else {
+                    addRoutePoint(route, pathX[i], previous[1]);
+                }
+                addRoutePoint(route, pathX[i], pathY[i]);
+                previous = new int[] { pathX[i], pathY[i] };
+            }
+            addRoutePoint(route, entry[0], previous[1]);
         }
-        return path;
+        addRoutePoint(route, entry[0], entry[1]);
+        addRoutePoint(route, endX, endY);
+        return route;
+    }
+
+    private static void addRoutePoint(List<int[]> route, int x, int y) {
+        int size = route.size();
+        if (size > 0) {
+            int[] previous = route.get(size - 1);
+            if (previous[0] == x && previous[1] == y) {
+                return;
+            }
+            if (size > 1) {
+                int[] before = route.get(size - 2);
+                // remove points in the middle of a straight line
+                if ((before[0] == previous[0] && previous[0] == x) || (before[1] == previous[1] && previous[1] == y)) {
+                    route.remove(size - 1);
+                }
+            }
+        }
+        route.add(new int[] { x, y });
+    }
+
+    private void drawRoute(List<int[]> route, int color, boolean forward, float speed) {
+        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND);
+        boolean cull = GL11.glIsEnabled(GL11.GL_CULL_FACE);
+
+        // a dark shadow below and to the right, like the shadow of minecraft text
+        beginShape(COLOR_CONNECTION_SHADOW);
+        for (int i = 1; i < route.size(); i++) {
+            addSegment(route.get(i - 1), route.get(i), 1);
+        }
+        endShape(blend, cull);
+
+        beginShape(color);
+        for (int i = 1; i < route.size(); i++) {
+            addSegment(route.get(i - 1), route.get(i), 0);
+        }
+        endShape(blend, cull);
+
+        // short pulses moving along the line, a bit like a redstone signal
+        int length = 0;
+        for (int i = 1; i < route.size(); i++) {
+            length += getSegmentLength(route.get(i - 1), route.get(i));
+        }
+        if (length < PULSE_SPACING) {
+            return;
+        }
+        int offset = (int) ((Minecraft.getSystemTime() % 100000L) / 1000F * speed) % PULSE_SPACING;
+        beginShape(getLighterColor(color));
+        for (int distance = offset; distance + PULSE_LENGTH <= length; distance += PULSE_SPACING) {
+            for (int j = 0; j < PULSE_LENGTH; j++) {
+                int[] pixel = getRoutePixel(route, forward ? distance + j : length - distance - j);
+                addPixel(pixel[0], pixel[1]);
+            }
+        }
+        endShape(blend, cull);
+    }
+
+    private static int getSegmentLength(int[] from, int[] to) {
+        return Math.abs(to[0] - from[0]) + Math.abs(to[1] - from[1]);
+    }
+
+    private static int[] getRoutePixel(List<int[]> route, int distance) {
+        for (int i = 1; i < route.size(); i++) {
+            int[] from = route.get(i - 1);
+            int[] to = route.get(i);
+            int segment = getSegmentLength(from, to);
+            if (distance <= segment) {
+                return new int[] { from[0] + Integer.signum(to[0] - from[0]) * distance,
+                        from[1] + Integer.signum(to[1] - from[1]) * distance };
+            }
+            distance -= segment;
+        }
+        return route.get(route.size() - 1);
+    }
+
+    private void addSegment(int[] from, int[] to, int offset) {
+        int x = Math.min(from[0], to[0]) + offset;
+        int y = Math.min(from[1], to[1]) + offset;
+        addRect(x, y, Math.abs(to[0] - from[0]) + 1, Math.abs(to[1] - from[1]) + 1);
+    }
+
+    private void addPixel(int x, int y) {
+        addRect(x, y, 1, 1);
+    }
+
+    private void addRect(int x, int y, int w, int h) {
+        Tessellator tessellator = Tessellator.instance;
+        x += guiLeft;
+        y += guiTop;
+        tessellator.addVertex(x, y + h, zLevel);
+        tessellator.addVertex(x + w, y + h, zLevel);
+        tessellator.addVertex(x + w, y, zLevel);
+        tessellator.addVertex(x, y, zLevel);
     }
 
     private void beginShape(int color) {
@@ -809,82 +920,6 @@ public class GuiManager extends GuiBase {
         }
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glColor4f(1F, 1F, 1F, 1F);
-    }
-
-    private void drawPath(float[][] path, float width, int color) {
-        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND);
-        boolean cull = GL11.glIsEnabled(GL11.GL_CULL_FACE);
-        beginShape(color);
-        Tessellator tessellator = Tessellator.instance;
-        float half = width / 2;
-        for (int i = 0; i < path[0].length - 1; i++) {
-            float x1 = guiLeft + path[0][i];
-            float y1 = guiTop + path[1][i];
-            float x2 = guiLeft + path[0][i + 1];
-            float y2 = guiTop + path[1][i + 1];
-            float dx = x2 - x1;
-            float dy = y2 - y1;
-            float length = (float) Math.sqrt(dx * dx + dy * dy);
-            if (length < 0.001F) {
-                continue;
-            }
-            // extend each segment by half its width so the joints between segments are filled
-            float extendX = dx / length * half;
-            float extendY = dy / length * half;
-            float normalX = -extendY;
-            float normalY = extendX;
-            x1 -= extendX;
-            y1 -= extendY;
-            x2 += extendX;
-            y2 += extendY;
-
-            tessellator.addVertex(x1 + normalX, y1 + normalY, zLevel);
-            tessellator.addVertex(x2 + normalX, y2 + normalY, zLevel);
-            tessellator.addVertex(x2 - normalX, y2 - normalY, zLevel);
-            tessellator.addVertex(x1 - normalX, y1 - normalY, zLevel);
-        }
-        endShape(blend, cull);
-    }
-
-    private void drawFlow(float[][] path, boolean forward, float speed, int color) {
-        int count = path[0].length;
-        float[] lengths = new float[count];
-        for (int i = 1; i < count; i++) {
-            float dx = path[0][i] - path[0][i - 1];
-            float dy = path[1][i] - path[1][i - 1];
-            lengths[i] = lengths[i - 1] + (float) Math.sqrt(dx * dx + dy * dy);
-        }
-        float total = lengths[count - 1];
-        if (total < FLOW_SPACING) {
-            return;
-        }
-
-        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND);
-        boolean cull = GL11.glIsEnabled(GL11.GL_CULL_FACE);
-        beginShape(color);
-        Tessellator tessellator = Tessellator.instance;
-        float half = FLOW_SIZE / 2;
-        float offset = (Minecraft.getSystemTime() % 100000L) / 1000F * speed % FLOW_SPACING;
-        int segment = 1;
-        for (float distance = offset; distance < total; distance += FLOW_SPACING) {
-            float target = forward ? distance : total - distance;
-            if (!forward) {
-                segment = 1;
-            }
-            while (segment < count - 1 && lengths[segment] < target) {
-                segment++;
-            }
-            float segmentLength = lengths[segment] - lengths[segment - 1];
-            float t = segmentLength < 0.001F ? 0 : (target - lengths[segment - 1]) / segmentLength;
-            float x = guiLeft + path[0][segment - 1] + (path[0][segment] - path[0][segment - 1]) * t;
-            float y = guiTop + path[1][segment - 1] + (path[1][segment] - path[1][segment - 1]) * t;
-
-            tessellator.addVertex(x - half, y + half, zLevel);
-            tessellator.addVertex(x + half, y + half, zLevel);
-            tessellator.addVertex(x + half, y - half, zLevel);
-            tessellator.addVertex(x - half, y - half, zLevel);
-        }
-        endShape(blend, cull);
     }
 
     private void startClipping(int x, int y, int w, int h) {
