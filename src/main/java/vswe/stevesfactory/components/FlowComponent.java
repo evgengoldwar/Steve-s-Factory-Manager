@@ -790,7 +790,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                                                 textBox.setTextAndCursor("");
                                             }
                                         } else
-                            if (inArrowBounds(internalX, internalY) || ((Settings.isLargeOpenHitBox() || button == 1)
+                            if (inArrowBounds(internalX, internalY) || ((Settings.isLargeOpenHitBox() || button == 0)
                                     && internalY < COMPONENT_SIZE_H)) {
                                         if (!isLarge && type == ComponentType.GROUP
                                                 && Settings.isQuickGroupOpen()
@@ -807,7 +807,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
                                         if (menu.isVisible()) {
                                             if (inMenuArrowBounds(i, internalX, internalY)
-                                                    || ((Settings.isLargeOpenHitBoxMenu() || button == 1)
+                                                    || ((Settings.isLargeOpenHitBoxMenu() || button == 0)
                                                             && internalY >= getMenuItemY(i)
                                                             && internalY <= getMenuItemY(i) + MENU_ITEM_SIZE_H)) {
                                                 if (openMenuId == i) {
