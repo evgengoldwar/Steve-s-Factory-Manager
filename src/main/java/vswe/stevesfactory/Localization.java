@@ -326,6 +326,7 @@ public enum Localization {
     PREFERENCES,
     SETTINGS,
     ZOOM,
+    MANAGER_TITLE,
     VIEW_FIT,
     VIEW_RESET_ZOOM,
     VIEW_GRID,

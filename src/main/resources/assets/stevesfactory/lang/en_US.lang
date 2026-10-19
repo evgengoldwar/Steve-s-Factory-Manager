@@ -360,6 +360,7 @@ gui.sfm.Commands=Commands
 gui.sfm.Preferences=User Preferences
 gui.sfm.Settings=Manager Settings
 gui.sfm.Zoom=Zoom
+gui.sfm.ManagerTitle=Factory Manager
 gui.sfm.ViewFit=Show all commands (Home)
 gui.sfm.ViewResetZoom=Reset zoom to 100%
 gui.sfm.ViewGrid=Toggle grid

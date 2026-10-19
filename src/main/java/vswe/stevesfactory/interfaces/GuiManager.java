@@ -63,6 +63,7 @@ public class GuiManager extends GuiBase {
     private static final int BORDER = 4;
     private static final int BUTTON_SPACING = 18;
     private static final int BUTTON_START = 5;
+    private static final int TOP_BAR_HEIGHT = 20;
     private static final int STATUS_BAR_HEIGHT = 12;
 
     private static final float MIN_ZOOM = 0.25F;
@@ -77,8 +78,8 @@ public class GuiManager extends GuiBase {
     private static final int GRID_MAJOR_SIZE = 50;
     private static final int GRID_MIN_SPACING = 6;
 
-    private static final int TOOL_SIZE = 14;
-    private static final int TOOL_SPACING = 16;
+    private static final int TOOL_SIZE = 16;
+    private static final int TOOL_SPACING = 18;
     private static final int TOOL_FIT = 0;
     private static final int TOOL_RESET_ZOOM = 1;
     private static final int TOOL_GRID = 2;
@@ -96,21 +97,24 @@ public class GuiManager extends GuiBase {
     private static final int COLOR_PANEL_DARK = 0xFF555555;
     private static final int COLOR_OUTLINE = 0xFF000000;
     private static final int COLOR_INSET_DARK = 0xFF373737;
-    private static final int COLOR_TEXT = 0x404040;
+    private static final int COLOR_TEXT = 0xFFFFFF;
 
-    private static final int COLOR_CANVAS = 0xFF2B2B2B;
-    private static final int COLOR_CANVAS_OUTSIDE = 0xFF1C1C1C;
-    private static final int COLOR_GRID_MINOR = 0xFF333333;
-    private static final int COLOR_GRID_MAJOR = 0xFF3E3E3E;
+    // colors of the NEI crafting tree
+    private static final int COLOR_CANVAS = 0xFF10111A;
+    private static final int COLOR_CANVAS_OUTSIDE = 0xFF0A0A10;
+    private static final int COLOR_GRID_MINOR = 0xFF151621;
+    private static final int COLOR_GRID_MAJOR = 0xFF1B1C2A;
+    private static final int COLOR_SEPARATOR = 0xFF898B8F;
 
-    private static final int COLOR_TOOL = 0xFF6F6F6F;
-    private static final int COLOR_TOOL_HOVER = 0xFF7E88BF;
-    private static final int COLOR_TOOL_ACTIVE = 0xFF5A8A4A;
-    private static final int COLOR_TOOL_LIGHT = 0xFFAAAAAA;
-    private static final int COLOR_TOOL_DARK = 0xFF3F3F3F;
-    private static final int COLOR_ICON = 0xFFE0E0E0;
+    private static final int COLOR_TOOL = 0xFF2E2E2E;
+    private static final int COLOR_TOOL_TOP = 0xFF383838;
+    private static final int COLOR_TOOL_HOVER = 0xFF3E3E52;
+    private static final int COLOR_TOOL_HOVER_TOP = 0xFF4A4A62;
+    private static final int COLOR_TOOL_LIGHT = 0xFF4B4949;
+    private static final int COLOR_ICON = 0xFFEAE8E9;
+    private static final int COLOR_ICON_ACTIVE = 0xFF30A859;
 
-    private static final int COLOR_CONNECTION_OUTLINE = 0xFF141414;
+    private static final int COLOR_CONNECTION_OUTLINE = 0xFF07070C;
     private static final int COLOR_CONNECTION_PREVIEW = 0xFFFFFF55;
 
     private static final float CONNECTION_WIDTH = 1F;
@@ -162,14 +166,20 @@ public class GuiManager extends GuiBase {
 
         super.initGui();
 
-        int bottom = ySize - BORDER - STATUS_BAR_HEIGHT;
-        buttonRows = Math.max(1, (bottom - BUTTON_START - TileEntityManager.BUTTON_SIZE_H) / BUTTON_SPACING + 1);
+        canvasY = BORDER + TOP_BAR_HEIGHT;
+        int bottom = ySize - BORDER - 1;
+        buttonRows = Math.max(1, (bottom - canvasY - TileEntityManager.BUTTON_SIZE_H) / BUTTON_SPACING + 1);
         int buttonColumns = (manager.buttons.size() + buttonRows - 1) / buttonRows;
 
         canvasX = BUTTON_START + Math.max(1, buttonColumns) * BUTTON_SPACING;
-        canvasY = BORDER;
-        canvasW = xSize - BORDER - canvasX;
-        canvasH = bottom - canvasY - 1;
+        canvasW = xSize - BORDER - 1 - canvasX;
+        // the status bar is placed below the canvas, separated by a line
+        canvasH = bottom - canvasY - STATUS_BAR_HEIGHT - 1;
+    }
+
+    @Override
+    protected boolean isDarkTheme() {
+        return true;
     }
 
     @Override
@@ -216,6 +226,10 @@ public class GuiManager extends GuiBase {
             // the special interfaces are designed for the original size, keep them centered
             int offsetX = getSpecialOffsetX();
             int offsetY = getSpecialOffsetY();
+            if (!useScreen) {
+                drawInset(offsetX - 1, offsetY - 1, MIN_WIDTH + 2, MIN_HEIGHT + 2);
+                drawColoredRect(offsetX, offsetY, MIN_WIDTH, MIN_HEIGHT, COLOR_CANVAS);
+            }
             GL11.glPushMatrix();
             GL11.glTranslatef(offsetX, offsetY, 0);
             bindTexture(COMPONENTS);
@@ -229,8 +243,11 @@ public class GuiManager extends GuiBase {
         updateView();
 
         if (!useScreen) {
-            drawInset(canvasX - 1, canvasY - 1, canvasW + 2, canvasH + 2);
-            drawColoredRect(canvasX, canvasY, canvasW, canvasH, COLOR_CANVAS);
+            drawInset(canvasX - 1, canvasY - 1, canvasW + 2, canvasH + STATUS_BAR_HEIGHT + 3);
+            drawColoredRect(canvasX, canvasY, canvasW, canvasH + STATUS_BAR_HEIGHT + 1, COLOR_CANVAS);
+            drawColoredRect(canvasX, canvasY + canvasH, canvasW, 1, COLOR_SEPARATOR);
+            String title = Localization.MANAGER_TITLE.toString();
+            drawShadowString(title, (xSize - getStringWidth(title)) / 2, BORDER + 6, COLOR_TEXT);
         }
         // the components are depth sorted, they should never end up behind the background
         GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
@@ -336,11 +353,11 @@ public class GuiManager extends GuiBase {
         }
 
         if (useInfo) {
-            int textY = ySize - BORDER - STATUS_BAR_HEIGHT + 2;
+            int textY = canvasY + canvasH + 3;
             String zoomText = Localization.ZOOM.toString() + ": " + Math.round(zoom * 100) + "%";
             int zoomWidth = getStringWidth(zoomText);
-            drawString(getInfo(xSize - BORDER * 4 - zoomWidth), BORDER + 1, textY, 1F, COLOR_TEXT);
-            drawString(zoomText, xSize - BORDER - 1 - zoomWidth, textY, 1F, COLOR_TEXT);
+            drawShadowString(getInfo(canvasW - zoomWidth - 12), canvasX + 3, textY, COLOR_TEXT);
+            drawShadowString(zoomText, canvasX + canvasW - 3 - zoomWidth, textY, COLOR_TEXT);
         }
         GL11.glPopMatrix();
 
@@ -475,69 +492,69 @@ public class GuiManager extends GuiBase {
             int y = getToolY();
             boolean hover = CollisionHelper.inBounds(x, y, TOOL_SIZE - 1, TOOL_SIZE - 1, mX, mY);
             boolean active = (i == TOOL_GRID && showGrid) || (i == TOOL_MINIMAP && showMinimap);
+            int iconColor = active ? COLOR_ICON_ACTIVE : COLOR_ICON;
 
+            // dark buttons like the ones of the NEI crafting tree
             drawColoredRect(x, y, TOOL_SIZE, TOOL_SIZE, COLOR_OUTLINE);
+            drawColoredRect(x + 1, y + 1, TOOL_SIZE - 2, TOOL_SIZE - 2, hover ? COLOR_TOOL_HOVER : COLOR_TOOL);
             drawColoredRect(
                     x + 1,
                     y + 1,
                     TOOL_SIZE - 2,
-                    TOOL_SIZE - 2,
-                    hover ? COLOR_TOOL_HOVER : active ? COLOR_TOOL_ACTIVE : COLOR_TOOL);
+                    TOOL_SIZE / 2 - 1,
+                    hover ? COLOR_TOOL_HOVER_TOP : COLOR_TOOL_TOP);
             drawColoredRect(x + 1, y + 1, TOOL_SIZE - 2, 1, COLOR_TOOL_LIGHT);
-            drawColoredRect(x + 1, y + 1, 1, TOOL_SIZE - 2, COLOR_TOOL_LIGHT);
-            drawColoredRect(x + 1, y + TOOL_SIZE - 2, TOOL_SIZE - 2, 1, COLOR_TOOL_DARK);
-            drawColoredRect(x + TOOL_SIZE - 2, y + 1, 1, TOOL_SIZE - 2, COLOR_TOOL_DARK);
 
-            int iconX = x + 3;
-            int iconY = y + 3;
+            int iconX = x + 4;
+            int iconY = y + 4;
             switch (i) {
                 case TOOL_FIT:
                     // four corners
-                    drawColoredRect(iconX, iconY, 3, 1, COLOR_ICON);
-                    drawColoredRect(iconX, iconY, 1, 3, COLOR_ICON);
-                    drawColoredRect(iconX + 5, iconY, 3, 1, COLOR_ICON);
-                    drawColoredRect(iconX + 7, iconY, 1, 3, COLOR_ICON);
-                    drawColoredRect(iconX, iconY + 7, 3, 1, COLOR_ICON);
-                    drawColoredRect(iconX, iconY + 5, 1, 3, COLOR_ICON);
-                    drawColoredRect(iconX + 5, iconY + 7, 3, 1, COLOR_ICON);
-                    drawColoredRect(iconX + 7, iconY + 5, 1, 3, COLOR_ICON);
+                    drawColoredRect(iconX, iconY, 3, 1, iconColor);
+                    drawColoredRect(iconX, iconY, 1, 3, iconColor);
+                    drawColoredRect(iconX + 5, iconY, 3, 1, iconColor);
+                    drawColoredRect(iconX + 7, iconY, 1, 3, iconColor);
+                    drawColoredRect(iconX, iconY + 7, 3, 1, iconColor);
+                    drawColoredRect(iconX, iconY + 5, 1, 3, iconColor);
+                    drawColoredRect(iconX + 5, iconY + 7, 3, 1, iconColor);
+                    drawColoredRect(iconX + 7, iconY + 5, 1, 3, iconColor);
                     break;
                 case TOOL_RESET_ZOOM:
                     // magnifying glass
-                    drawColoredRect(iconX + 1, iconY, 3, 1, COLOR_ICON);
-                    drawColoredRect(iconX + 1, iconY + 4, 3, 1, COLOR_ICON);
-                    drawColoredRect(iconX, iconY + 1, 1, 3, COLOR_ICON);
-                    drawColoredRect(iconX + 4, iconY + 1, 1, 3, COLOR_ICON);
-                    drawColoredRect(iconX + 4, iconY + 4, 2, 2, COLOR_ICON);
-                    drawColoredRect(iconX + 6, iconY + 6, 2, 2, COLOR_ICON);
+                    drawColoredRect(iconX + 1, iconY, 3, 1, iconColor);
+                    drawColoredRect(iconX + 1, iconY + 4, 3, 1, iconColor);
+                    drawColoredRect(iconX, iconY + 1, 1, 3, iconColor);
+                    drawColoredRect(iconX + 4, iconY + 1, 1, 3, iconColor);
+                    drawColoredRect(iconX + 4, iconY + 4, 2, 2, iconColor);
+                    drawColoredRect(iconX + 6, iconY + 6, 2, 2, iconColor);
                     break;
                 case TOOL_GRID:
                     for (int j = 0; j < 3; j++) {
-                        drawColoredRect(iconX + 1 + j * 3, iconY, 1, 8, COLOR_ICON);
-                        drawColoredRect(iconX, iconY + 1 + j * 3, 8, 1, COLOR_ICON);
+                        drawColoredRect(iconX + 1 + j * 3, iconY, 1, 8, iconColor);
+                        drawColoredRect(iconX, iconY + 1 + j * 3, 8, 1, iconColor);
                     }
                     break;
                 case TOOL_MINIMAP:
-                    drawColoredRect(iconX, iconY, 8, 1, COLOR_ICON);
-                    drawColoredRect(iconX, iconY + 7, 8, 1, COLOR_ICON);
-                    drawColoredRect(iconX, iconY, 1, 8, COLOR_ICON);
-                    drawColoredRect(iconX + 7, iconY, 1, 8, COLOR_ICON);
-                    drawColoredRect(iconX + 2, iconY + 2, 3, 2, COLOR_ICON);
-                    drawColoredRect(iconX + 4, iconY + 4, 2, 2, COLOR_ICON);
+                    drawColoredRect(iconX, iconY, 8, 1, iconColor);
+                    drawColoredRect(iconX, iconY + 7, 8, 1, iconColor);
+                    drawColoredRect(iconX, iconY, 1, 8, iconColor);
+                    drawColoredRect(iconX + 7, iconY, 1, 8, iconColor);
+                    drawColoredRect(iconX + 2, iconY + 2, 3, 2, iconColor);
+                    drawColoredRect(iconX + 4, iconY + 4, 2, 2, iconColor);
                     break;
                 case TOOL_HELP:
-                    drawString("?", x + 4, y + 3, 1F, 0xE0E0E0);
+                    drawShadowString("?", x + 5, y + 4, iconColor);
                     break;
             }
         }
     }
 
     private int getToolX(int id) {
-        return canvasX + canvasW - 3 - (TOOL_COUNT - id) * TOOL_SPACING;
+        return BORDER + 1 + id * TOOL_SPACING;
     }
 
     private int getToolY() {
-        return canvasY + 3;
+        return BORDER + 1;
     }
 
     private int getToolAt(int mX, int mY) {
@@ -617,8 +634,8 @@ public class GuiManager extends GuiBase {
         minimapOriginX = minimapX + 1 + ((minimapW - 2) - (maxX - minX) * minimapScale) / 2 - minX * minimapScale;
         minimapOriginY = minimapY + 1 + ((minimapH - 2) - (maxY - minY) * minimapScale) / 2 - minY * minimapScale;
 
-        drawColoredRect(minimapX - 1, minimapY - 1, minimapW + 2, minimapH + 2, COLOR_OUTLINE);
-        drawColoredRect(minimapX, minimapY, minimapW, minimapH, 0xE01A1A1A);
+        drawColoredRect(minimapX - 1, minimapY - 1, minimapW + 2, minimapH + 2, COLOR_SEPARATOR);
+        drawColoredRect(minimapX, minimapY, minimapW, minimapH, 0xF0181924);
 
         for (FlowComponent component : manager.getFlowItems()) {
             if (component.isVisible()) {
@@ -895,7 +912,7 @@ public class GuiManager extends GuiBase {
     }
 
     private int getButtonY(int id) {
-        return BUTTON_START + (id % buttonRows) * BUTTON_SPACING;
+        return canvasY + 1 + (id % buttonRows) * BUTTON_SPACING;
     }
 
     private int getSpecialOffsetX() {

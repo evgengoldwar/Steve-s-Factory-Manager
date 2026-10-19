@@ -1,5 +1,6 @@
 # Only the newer strings are translated, everything else falls back to en_US
 gui.sfm.Zoom=Масштаб
+gui.sfm.ManagerTitle=Менеджер фабрики
 gui.sfm.ViewFit=Показать все команды (Home)
 gui.sfm.ViewResetZoom=Сбросить масштаб до 100%
 gui.sfm.ViewGrid=Показать/скрыть сетку

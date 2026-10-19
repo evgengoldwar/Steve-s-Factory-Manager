@@ -76,7 +76,9 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     private static final int CURSOR_Y = -4;
     private static final int CURSOR_Z = 5;
     private static final int TEXT_X = 7;
-    private static final int TEXT_Y = 10;
+    private static final int TEXT_Y = 8;
+    private static final int TEXT_Y_SECOND_LINE = 11;
+    private static final int TYPE_Y = 4;
     private static final int TEXT_HEIGHT = 10;
     private static final int EDIT_SRC_X = 32;
     private static final int EDIT_SRC_Y = 189;
@@ -96,19 +98,22 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     private static final int SHADOW_SIZE_DRAGGING = 4;
     private static final int SHADOW_COLOR = 0x70000000;
 
-    private static final int COLOR_OUTLINE = 0xFF101010;
-    private static final int COLOR_PANEL = 0xFFC6C6C6;
-    private static final int COLOR_LIGHT = 0xFFF4F4F4;
-    private static final int COLOR_SHADE = 0xFF8B8B8B;
-    private static final int COLOR_GRIP = 0xFF6A6A6A;
-    private static final int COLOR_SEPARATOR = 0xFFA8A8A8;
-    private static final int COLOR_MENU = 0xFFB4B4B4;
-    private static final int COLOR_MENU_OPEN = 0xFFADADAD;
-    private static final int COLOR_MENU_LIGHT = 0xFFDCDCDC;
-    private static final int COLOR_ARROW = 0xFF404040;
+    // the commands look like the slots of the NEI crafting tree
+    private static final int HEADER_HEIGHT = 18;
+    private static final int COLOR_BORDER = 0xFF8A8A8C;
+    private static final int COLOR_HEADER = 0xFF2E2F33;
+    private static final int COLOR_BODY = 0xFF1C1D26;
+    private static final int COLOR_MENU = 0xFF363634;
+    private static final int COLOR_MENU_OPEN = 0xFF404148;
+    private static final int COLOR_ARROW = 0xFFC8C8C8;
     private static final int COLOR_ARROW_HOVER = 0xFFFFFFFF;
-    private static final int COLOR_ERROR = 0xFFD83030;
-    private static final int COLOR_ERROR_HOVER = 0xFFFF6A6A;
+    private static final int COLOR_ARROW_HOVER_BACKGROUND = 0xFF5A5B66;
+    private static final int COLOR_ERROR = 0xFFFF5555;
+    private static final int COLOR_ERROR_HOVER = 0xFFFF9A9A;
+    private static final int COLOR_TITLE = 0xFFFFFF;
+    private static final int COLOR_TITLE_EDITING = 0xFFFF55;
+    private static final int COLOR_EDITING = 0x55FF55;
+    private static final int COLOR_TYPE = 0xA0A0A0;
 
     public static final int MAX_POSITION_X = (1 << DataBitHelper.FLOW_CONTROL_X.getBitCount()) - 1;
     public static final int MAX_POSITION_Y = (1 << DataBitHelper.FLOW_CONTROL_Y.getBitCount()) - 1;
@@ -256,7 +261,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         GL11.glDepthMask(true);
 
         int typeColor = getTypeColor();
-        drawPanel(gui, x, y, getComponentWidth(), getComponentHeight(), typeColor);
+        drawPanel(gui, x, y, getComponentWidth(), getComponentHeight(), typeColor, isLarge);
 
         int internalX = mX - x;
         int internalY = mY - y;
@@ -269,10 +274,6 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                 ARROW_SIZE_H,
                 isLarge,
                 inArrowBounds(internalX, internalY));
-
-        if (isLarge) {
-            gui.drawColoredRect(x + MENU_X, y + MENU_Y - 2, MENU_ITEM_SIZE_W, 1, COLOR_SEPARATOR);
-        }
 
         if (isLarge) {
             for (int i = 0; i < menus.size(); i++) {
@@ -289,16 +290,16 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                 int itemX = getMenuAreaX();
                 int itemY = y + getMenuItemY(i);
                 boolean isOpen = i == openMenuId;
+                // menus have a header looking like the one of the command
+                gui.drawColoredRect(itemX, itemY, MENU_ITEM_SIZE_W, MENU_ITEM_SIZE_H, COLOR_BORDER);
                 gui.drawColoredRect(
-                        itemX,
-                        itemY,
-                        MENU_ITEM_SIZE_W,
-                        MENU_ITEM_SIZE_H,
+                        itemX + 1,
+                        itemY + 1,
+                        MENU_ITEM_SIZE_W - 2,
+                        MENU_ITEM_SIZE_H - 2,
                         isOpen ? COLOR_MENU_OPEN : COLOR_MENU);
-                gui.drawColoredRect(itemX, itemY, MENU_ITEM_SIZE_W, 1, COLOR_MENU_LIGHT);
-                gui.drawColoredRect(itemX, itemY + MENU_ITEM_SIZE_H - 1, MENU_ITEM_SIZE_W, 1, COLOR_SHADE);
                 if (isOpen) {
-                    gui.drawColoredRect(itemX, itemY, 2, MENU_ITEM_SIZE_H, typeColor);
+                    gui.drawColoredRect(itemX + 1, itemY + 1, 2, MENU_ITEM_SIZE_H - 2, typeColor);
                 }
 
                 drawChevron(
@@ -310,11 +311,11 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                         isOpen,
                         inMenuArrowBounds(i, internalX, internalY));
 
-                gui.drawString(
+                gui.drawShadowString(
                         menu.getName(),
                         x + MENU_X + MENU_ITEM_TEXT_X,
                         y + getMenuItemY(i) + MENU_ITEM_TEXT_Y,
-                        0x404040);
+                        COLOR_TITLE);
 
                 if (i == openMenuId) {
                     GL11.glPushMatrix();
@@ -445,23 +446,26 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
             gui.drawColoredRect(x + ERROR_X, y + ERROR_Y + ERROR_SIZE_H - 3, ERROR_SIZE_W, 2, errorColor);
         }
 
+        // small commands showing their type use two lines
+        boolean showType = !isLarge && name != null && Settings.isCommandTypes() && !GuiScreen.isCtrlKeyDown();
+        int textY = y + (showType ? TEXT_Y_SECOND_LINE : TEXT_Y);
         if (!isEditing || isLarge) {
             String name = getDisplayName(gui, !isLarge);
-            gui.drawString(name, x + TEXT_X, y + TEXT_Y, 0.7F, isEditing ? 0x707020 : 0x404040);
+            gui.drawShadowString(name, x + TEXT_X, textY, 0.7F, isEditing ? COLOR_TITLE_EDITING : COLOR_TITLE);
         }
 
         if (isEditing) {
-            gui.drawString(getShortName(gui, getName()), x + TEXT_X, y + TEXT_Y, 0.7F, 0x207020);
+            gui.drawShadowString(getShortName(gui, getName()), x + TEXT_X, textY, 0.7F, COLOR_EDITING);
         }
 
-        if (name != null && Settings.isCommandTypes() && !GuiScreen.isCtrlKeyDown()) {
+        if (showType) {
             gui.drawCenteredString(
                     getType().getName(),
                     x + DRAGGABLE_SIZE,
-                    y + 3,
+                    y + TYPE_Y,
                     0.7F,
                     getComponentWidth() - DRAGGABLE_SIZE - ARROW_SIZE_W,
-                    0x707070);
+                    COLOR_TYPE);
         }
 
         if (isLarge) {
@@ -507,17 +511,15 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     }
 
     @SideOnly(Side.CLIENT)
-    private static void drawPanel(GuiManager gui, int x, int y, int w, int h, int typeColor) {
-        // outline with cut corners
-        gui.drawColoredRect(x + 1, y, w - 2, 1, COLOR_OUTLINE);
-        gui.drawColoredRect(x + 1, y + h - 1, w - 2, 1, COLOR_OUTLINE);
-        gui.drawColoredRect(x, y + 1, 1, h - 2, COLOR_OUTLINE);
-        gui.drawColoredRect(x + w - 1, y + 1, 1, h - 2, COLOR_OUTLINE);
-
-        gui.drawColoredRect(x + 1, y + 1, w - 2, h - 2, COLOR_PANEL);
-        gui.drawColoredRect(x + 1, y + 3, 1, h - 4, COLOR_LIGHT);
-        gui.drawColoredRect(x + 1, y + h - 2, w - 2, 1, COLOR_SHADE);
-        gui.drawColoredRect(x + w - 2, y + 3, 1, h - 4, COLOR_SHADE);
+    private static void drawPanel(GuiManager gui, int x, int y, int w, int h, int typeColor, boolean large) {
+        // the border, the header and for open commands a body separated from the header by a line
+        gui.drawColoredRect(x, y, w, h, COLOR_BORDER);
+        if (large) {
+            gui.drawColoredRect(x + 1, y + 1, w - 2, HEADER_HEIGHT - 1, COLOR_HEADER);
+            gui.drawColoredRect(x + 1, y + HEADER_HEIGHT + 1, w - 2, h - HEADER_HEIGHT - 2, COLOR_BODY);
+        } else {
+            gui.drawColoredRect(x + 1, y + 1, w - 2, h - 2, COLOR_HEADER);
+        }
 
         // colored stripe telling what kind of command this is
         gui.drawColoredRect(x + 1, y + 1, w - 2, 1, typeColor);
@@ -526,7 +528,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         // grip showing where the command can be moved from
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 2; j++) {
-                gui.drawColoredRect(x + 2 + i * 2, y + 4 + j * 2, 1, 1, COLOR_GRIP);
+                gui.drawColoredRect(x + 2 + i * 2, y + 4 + j * 2, 1, 1, COLOR_BORDER);
             }
         }
     }
@@ -534,7 +536,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     @SideOnly(Side.CLIENT)
     private static void drawChevron(GuiManager gui, int x, int y, int w, int h, boolean open, boolean hover) {
         if (hover) {
-            gui.drawColoredRect(x, y, w, h, COLOR_SHADE);
+            gui.drawColoredRect(x, y, w, h, COLOR_ARROW_HOVER_BACKGROUND);
         }
         int color = hover ? COLOR_ARROW_HOVER : COLOR_ARROW;
         int centerX = x + w / 2;

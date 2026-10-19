@@ -83,7 +83,54 @@ public abstract class GuiBase extends GuiAntiNEI {
         return new ResourceLocation(StevesFactoryManager.RESOURCE_LOCATION, "textures/gui/" + name + ".png");
     }
 
+    /**
+     * Interfaces with a dark background show the text of the commands in light colors
+     */
+    protected boolean isDarkTheme() {
+        return false;
+    }
+
+    private int getTextColor(int color) {
+        if (!isDarkTheme()) {
+            return color;
+        }
+        int r = (color >> 16) & 0xFF;
+        int g = (color >> 8) & 0xFF;
+        int b = color & 0xFF;
+        int max = Math.max(r, Math.max(g, b));
+        if (max >= 0x90) {
+            return color;
+        }
+        if (max - Math.min(r, Math.min(g, b)) < 0x10) {
+            // dark gray text becomes light gray
+            int v = Math.min(0xFF, 0xE0 - (max - 0x40) / 2);
+            return (color & 0xFF000000) | (v << 16) | (v << 8) | v;
+        }
+        // dark colored text keeps its hue but is brightened
+        float mult = 255F / Math.max(1, max);
+        r = Math.max(0x50, (int) (r * mult));
+        g = Math.max(0x50, (int) (g * mult));
+        b = Math.max(0x50, (int) (b * mult));
+        return (color & 0xFF000000) | (r << 16) | (g << 8) | b;
+    }
+
+    public void drawShadowString(String str, int x, int y, int color) {
+        fontRendererObj.drawStringWithShadow(str, x + guiLeft, y + guiTop, color);
+        bindTexture(getComponentResource());
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+    }
+
+    public void drawShadowString(String str, int x, int y, float mult, int color) {
+        GL11.glPushMatrix();
+        GL11.glScalef(mult, mult, 1F);
+        fontRendererObj.drawStringWithShadow(str, (int) ((x + guiLeft) / mult), (int) ((y + guiTop) / mult), color);
+        bindTexture(getComponentResource());
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GL11.glPopMatrix();
+    }
+
     public void drawString(String str, int x, int y, float mult, int color) {
+        color = getTextColor(color);
         GL11.glPushMatrix();
         GL11.glScalef(mult, mult, 1F);
         fontRendererObj.drawString(str, (int) ((x + guiLeft) / mult), (int) ((y + guiTop) / mult), color);
@@ -94,6 +141,7 @@ public abstract class GuiBase extends GuiAntiNEI {
     }
 
     public void drawSplitString(String str, int x, int y, int w, float mult, int color) {
+        color = getTextColor(color);
         GL11.glPushMatrix();
         GL11.glScalef(mult, mult, 1F);
         fontRendererObj.drawSplitString(
