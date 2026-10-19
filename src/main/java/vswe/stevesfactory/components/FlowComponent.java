@@ -101,7 +101,6 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     private static final int ICON_Y = 4;
     private static final int ICON_SIZE = 12;
     private static final int TITLE_HEIGHT = 19;
-    private static final float LARGE_SCALE = 1.5F;
     private static final int LARGE_PADDING = 3;
     private static final float MENU_TEXT_SCALE = 0.8F;
     private static final int COLOR_ARROW = 0xFFD0D0D0;
@@ -259,31 +258,22 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         gui.drawColoredRect(x + shadow, y + shadow, getComponentWidth(), getComponentHeight(), SHADOW_COLOR);
         GL11.glDepthMask(true);
 
-        // open commands are drawn larger so their menus are easier to read and use, the mouse position is converted
-        // to the unscaled layout of the command
-        int localX = getLocalX(mX);
-        int localY = getLocalY(mY);
-        int internalX = localX - x;
-        int internalY = localY - y;
-        GL11.glPushMatrix();
-        float scale = getScale();
-        GL11.glTranslatef(gui.getLeft() + x, gui.getTop() + y, 0);
-        GL11.glScalef(scale, scale, 1);
-        GL11.glTranslatef(-gui.getLeft() - x, -gui.getTop() - y, 0);
+        int internalX = mX - x;
+        int internalY = mY - y;
 
-        gui.drawRaisedPanel(x, y, getInnerWidth(), getInnerHeight());
+        gui.drawRaisedPanel(x, y, getComponentWidth(), getComponentHeight());
         if (isLarge) {
             // the menus are placed in a sunken area below the title
             gui.drawSlot(
                     x + 1,
                     y + TITLE_HEIGHT,
-                    getInnerWidth() - 2,
-                    getInnerHeight() - TITLE_HEIGHT - 1,
+                    getComponentWidth() - 2,
+                    getComponentHeight() - TITLE_HEIGHT - 1,
                     gui.getSlotBorderColor());
         }
         int slotBorder = gui.getSlotBorderColor();
         if (!errors.isEmpty()) {
-            slotBorder = CollisionHelper.inBounds(x + ERROR_X, y + ERROR_Y, ERROR_SIZE_W, ERROR_SIZE_H, localX, localY)
+            slotBorder = CollisionHelper.inBounds(x + ERROR_X, y + ERROR_Y, ERROR_SIZE_W, ERROR_SIZE_H, mX, mY)
                     ? COLOR_ERROR_HOVER
                     : COLOR_ERROR;
         }
@@ -298,7 +288,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
         drawChevron(
                 gui,
-                x + getInnerWidth() + ARROW_X,
+                x + getComponentWidth() + ARROW_X,
                 y + ARROW_Y,
                 ARROW_SIZE_W,
                 ARROW_SIZE_H,
@@ -349,7 +339,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                 if (i == openMenuId) {
                     GL11.glPushMatrix();
                     GL11.glTranslatef(itemX, getMenuAreaY(i), 0);
-                    menu.draw(gui, localX - itemX, localY - getMenuAreaY(i));
+                    menu.draw(gui, mX - itemX, mY - getMenuAreaY(i));
                     GL11.glPopMatrix();
                 }
             }
@@ -382,12 +372,10 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                         x + DRAGGABLE_SIZE,
                         y + TYPE_Y,
                         0.7F,
-                        getInnerWidth() - DRAGGABLE_SIZE - ARROW_SIZE_W,
+                        getComponentWidth() - DRAGGABLE_SIZE - ARROW_SIZE_W,
                         COLOR_TYPE);
             }
         }
-
-        GL11.glPopMatrix();
 
         boolean hasConnection = false;
         int outputCount = 0;
@@ -562,13 +550,8 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
     @SideOnly(Side.CLIENT)
     public boolean isOnNameField(GuiManager gui, int mX, int mY) {
-        return isEditing && CollisionHelper.inBounds(
-                x + NAME_FIELD_X,
-                y + NAME_FIELD_Y,
-                getNameFieldWidth(gui),
-                NAME_FIELD_H,
-                getLocalX(mX),
-                getLocalY(mY));
+        return isEditing && CollisionHelper
+                .inBounds(x + NAME_FIELD_X, y + NAME_FIELD_Y, getNameFieldWidth(gui), NAME_FIELD_H, mX, mY);
     }
 
     private boolean isHighlighted(int mX, int mY) {
@@ -671,13 +654,9 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                 ComponentMenu menu = menus.get(i);
 
                 if (menu.isVisible() && i == openMenuId) {
-                    // the menu uses its own coordinates, which are scaled with the open command
-                    float scale = getScale();
-                    gui.pushTooltipTransform(
-                            x + (getMenuAreaX() - x) * scale,
-                            y + (getMenuAreaY(i) - y) * scale,
-                            scale);
-                    menu.drawMouseOver(gui, getLocalX(mX) - getMenuAreaX(), getLocalY(mY) - getMenuAreaY(i));
+                    // the menu uses its own coordinates
+                    gui.pushTooltipTransform(getMenuAreaX(), getMenuAreaY(i), 1F);
+                    menu.drawMouseOver(gui, mX - getMenuAreaX(), mY - getMenuAreaY(i));
                     gui.popTooltipTransform();
                 }
             }
@@ -709,8 +688,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         }
 
         if (!errors.isEmpty()) {
-            if (CollisionHelper
-                    .inBounds(x + ERROR_X, y + ERROR_Y, ERROR_SIZE_W, ERROR_SIZE_H, getLocalX(mX), getLocalY(mY))) {
+            if (CollisionHelper.inBounds(x + ERROR_X, y + ERROR_Y, ERROR_SIZE_W, ERROR_SIZE_H, mX, mY)) {
                 String str = "";
                 for (int i = 0; i < errors.size(); i++) {
                     if (i != 0) {
@@ -725,8 +703,8 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
     public boolean onClick(int mX, int mY, int button) {
         if (CollisionHelper.inBounds(x, y, getComponentWidth(), getComponentHeight(), mX, mY)) {
-            int internalX = getLocalX(mX) - x;
-            int internalY = getLocalY(mY) - y;
+            int internalX = mX - x;
+            int internalY = mY - y;
 
             if (internalX <= DRAGGABLE_SIZE && internalY <= DRAGGABLE_SIZE) {
                 mouseStartX = mouseDragX = mX;
@@ -768,10 +746,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                                 }
 
                                 if (i == openMenuId) {
-                                    menu.onClick(
-                                            getLocalX(mX) - getMenuAreaX(),
-                                            getLocalY(mY) - getMenuAreaY(i),
-                                            button);
+                                    menu.onClick(mX - getMenuAreaX(), mY - getMenuAreaY(i), button);
                                 }
                             }
                         }
@@ -968,7 +943,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         for (int i = 0; i < menus.size(); i++) {
             ComponentMenu menu = menus.get(i);
 
-            menu.onDrag(getLocalX(mX) - getMenuAreaX(), getLocalY(mY) - getMenuAreaY(i), i == openMenuId);
+            menu.onDrag(mX - getMenuAreaX(), mY - getMenuAreaY(i), i == openMenuId);
         }
 
         for (int i = 0; i < connectionSet.getConnections().length; i++) {
@@ -987,7 +962,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
         for (int i = 0; i < menus.size(); i++) {
             ComponentMenu menu = menus.get(i);
-            menu.onRelease(getLocalX(mX) - getMenuAreaX(), getLocalY(mY) - getMenuAreaY(i), isLarge && i == openMenuId);
+            menu.onRelease(mX - getMenuAreaX(), mY - getMenuAreaY(i), isLarge && i == openMenuId);
         }
 
         for (int i = 0; i < connectionSet.getConnections().length; i++) {
@@ -1126,7 +1101,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
     private boolean inArrowBounds(int internalX, int internalY) {
         return CollisionHelper
-                .inBounds(getInnerWidth() + ARROW_X, ARROW_Y, ARROW_SIZE_W, ARROW_SIZE_H, internalX, internalY);
+                .inBounds(getComponentWidth() + ARROW_X, ARROW_Y, ARROW_SIZE_W, ARROW_SIZE_H, internalX, internalY);
     }
 
     private boolean inMenuArrowBounds(int i, int internalX, int internalY) {
@@ -1158,26 +1133,11 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         return MENU_SIZE_H - MENU_ITEM_CAPACITY * (MENU_ITEM_SIZE_H - 1);
     }
 
-    /**
-     * The width the command takes up on the screen, open commands are drawn larger than their layout
-     */
     public int getComponentWidth() {
-        return (int) Math.ceil(getInnerWidth() * getScale());
-    }
-
-    public int getComponentHeight() {
-        return (int) Math.ceil(getInnerHeight() * getScale());
-    }
-
-    private float getScale() {
-        return isLarge ? LARGE_SCALE : 1F;
-    }
-
-    private int getInnerWidth() {
         return isLarge ? COMPONENT_SIZE_LARGE_W : COMPONENT_SIZE_W;
     }
 
-    private int getInnerHeight() {
+    public int getComponentHeight() {
         if (!isLarge) {
             return COMPONENT_SIZE_H;
         }
@@ -1195,19 +1155,8 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         return Math.min(COMPONENT_SIZE_LARGE_H, height + LARGE_PADDING);
     }
 
-    /**
-     * Converts a position on the screen to the position in the unscaled layout of the command
-     */
-    private int getLocalX(int mX) {
-        return x + (int) Math.floor((mX - x) / getScale());
-    }
-
-    private int getLocalY(int mY) {
-        return y + (int) Math.floor((mY - y) / getScale());
-    }
-
     public int getTitleHeight() {
-        return (int) Math.ceil(TITLE_HEIGHT * getScale());
+        return TITLE_HEIGHT;
     }
 
     private int[] getConnectionLocation(ConnectionOption connection, int inputCount, int outputCount, int sideCount) {
