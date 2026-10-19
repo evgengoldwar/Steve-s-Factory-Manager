@@ -77,6 +77,7 @@ public class GuiManager extends GuiBase {
     private static final float MIN_ZOOM = 0.25F;
     private static final float MAX_ZOOM = 2F;
     private static final float ZOOM_STEP = 1.15F;
+    private static final float ZOOM_SPEED = 18F;
     private static final int KEY_PAN_DISTANCE = 40;
     private static final int PAN_THRESHOLD = 3;
     private static final int EDGE_PAN_SIZE = 12;
@@ -164,6 +165,10 @@ public class GuiManager extends GuiBase {
     private float cameraX;
     private float cameraY;
     private float zoom = 1F;
+    // the zoom moves smoothly towards this value, keeping the anchor in place
+    private float targetZoom = 1F;
+    private int zoomAnchorX;
+    private int zoomAnchorY;
     private int currentGroupId = Integer.MIN_VALUE;
 
     private boolean isPanning;
@@ -279,7 +284,8 @@ public class GuiManager extends GuiBase {
         // the components are depth sorted, they should never end up behind the background
         GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
 
-        updateEdgePanning(x, y, elapsedSeconds);
+        updateZoom(elapsedSeconds);
+        updateMovement(x, y, elapsedSeconds);
 
         int worldX = toWorldX(x);
         int worldY = toWorldY(y);
@@ -1138,6 +1144,23 @@ public class GuiManager extends GuiBase {
         if (Math.abs(newZoom - 1F) < 0.03F) {
             newZoom = 1F;
         }
+        targetZoom = newZoom;
+        zoomAnchorX = anchorX;
+        zoomAnchorY = anchorY;
+    }
+
+    private void updateZoom(float elapsedSeconds) {
+        if (zoom == targetZoom) {
+            return;
+        }
+        float newZoom = zoom + (targetZoom - zoom) * Math.min(1F, elapsedSeconds * ZOOM_SPEED);
+        if (Math.abs(newZoom - targetZoom) < 0.002F) {
+            newZoom = targetZoom;
+        }
+        applyZoom(newZoom, zoomAnchorX, zoomAnchorY);
+    }
+
+    private void applyZoom(float newZoom, int anchorX, int anchorY) {
         // keep the point below the anchor in the same place
         float worldX = (anchorX - canvasX) / zoom + cameraX;
         float worldY = (anchorY - canvasY) / zoom + cameraY;
@@ -1173,6 +1196,7 @@ public class GuiManager extends GuiBase {
             cameraX = (minX + maxX) / 2F - canvasW / zoom / 2;
             cameraY = (minY + maxY) / 2F - canvasH / zoom / 2;
         }
+        targetZoom = zoom;
         clampCamera();
     }
 
@@ -1199,6 +1223,7 @@ public class GuiManager extends GuiBase {
                 cameraY = 0;
                 zoom = 1F;
             }
+            targetZoom = zoom;
             currentGroupId = groupId;
         }
         clampCamera();
@@ -1222,8 +1247,6 @@ public class GuiManager extends GuiBase {
         }
 
         float speed = EDGE_PAN_SPEED * Math.min(elapsedSeconds, 0.1F) / zoom;
-        float oldX = cameraX;
-        float oldY = cameraY;
         if (x < canvasX + EDGE_PAN_SIZE) {
             cameraX -= speed;
         } else if (x >= canvasX + canvasW - EDGE_PAN_SIZE) {
@@ -1235,15 +1258,52 @@ public class GuiManager extends GuiBase {
             cameraY += speed;
         }
         clampCamera();
+    }
 
-        if (oldX != cameraX || oldY != cameraY) {
-            // the mouse hasn't moved but the canvas below it has, let the moved command follow
+    /**
+     * Mouse events are only handled during the game ticks, which makes moving things around look like it runs at 20
+     * frames per second. Moving the canvas and commands is therefore done every frame using the current mouse position
+     * instead.
+     */
+    private void updateMovement(int x, int y, float elapsedSeconds) {
+        if (isPanning) {
+            if (Mouse.isButtonDown(panButton)) {
+                updatePanning(x, y);
+            }
+            return;
+        }
+
+        updateEdgePanning(x, y, elapsedSeconds);
+
+        if (Mouse.isButtonDown(0) && isMovingSomething()) {
+            int worldX = toWorldX(x);
+            int worldY = toWorldY(y);
             for (FlowComponent component : manager.getZLevelRenderingList()) {
                 if (component.isVisible()) {
-                    component.onDrag(toWorldX(x), toWorldY(y));
+                    component.onDrag(worldX, worldY);
                 }
             }
         }
+    }
+
+    private void updatePanning(int x, int y) {
+        if (Math.abs(x - panStartX) > PAN_THRESHOLD || Math.abs(y - panStartY) > PAN_THRESHOLD) {
+            hasPanned = true;
+        }
+        if (hasPanned) {
+            cameraX = panStartCameraX - (x - panStartX) / zoom;
+            cameraY = panStartCameraY - (y - panStartY) / zoom;
+            clampCamera();
+        }
+    }
+
+    private boolean isMovingSomething() {
+        for (FlowComponent component : manager.getFlowItems()) {
+            if (component.isVisible() && (component.isBeingMoved() || component.isMovingNode())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void handleMouseInput() {
@@ -1279,7 +1339,7 @@ public class GuiManager extends GuiBase {
             }
 
             if (isInCanvas(x, y)) {
-                setZoom(scroll > 0 ? zoom * ZOOM_STEP : zoom / ZOOM_STEP, x, y);
+                setZoom(scroll > 0 ? targetZoom * ZOOM_STEP : targetZoom / ZOOM_STEP, x, y);
             }
         }
     }
@@ -1418,15 +1478,8 @@ public class GuiManager extends GuiBase {
             return;
         }
 
-        if (isPanning) {
-            if (Math.abs(x - panStartX) > PAN_THRESHOLD || Math.abs(y - panStartY) > PAN_THRESHOLD) {
-                hasPanned = true;
-            }
-            if (hasPanned) {
-                cameraX = panStartCameraX - (x - panStartX) / zoom;
-                cameraY = panStartCameraY - (y - panStartY) / zoom;
-                clampCamera();
-            }
+        // panning and moving commands are updated every frame instead, see updateMovement
+        if (isPanning || isMovingSomething()) {
             return;
         }
 
@@ -1628,11 +1681,11 @@ public class GuiManager extends GuiBase {
                 break;
             case Keyboard.KEY_EQUALS:
             case Keyboard.KEY_ADD:
-                setZoom(zoom * ZOOM_STEP, canvasX + canvasW / 2, canvasY + canvasH / 2);
+                setZoom(targetZoom * ZOOM_STEP, canvasX + canvasW / 2, canvasY + canvasH / 2);
                 return true;
             case Keyboard.KEY_MINUS:
             case Keyboard.KEY_SUBTRACT:
-                setZoom(zoom / ZOOM_STEP, canvasX + canvasW / 2, canvasY + canvasH / 2);
+                setZoom(targetZoom / ZOOM_STEP, canvasX + canvasW / 2, canvasY + canvasH / 2);
                 return true;
             case Keyboard.KEY_HOME:
                 fitView();

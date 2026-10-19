@@ -1583,6 +1583,15 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         return isDragging;
     }
 
+    public boolean isMovingNode() {
+        for (Connection connection : connections.values()) {
+            if (connection != null && connection.getSelectedNode() != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void decreaseId() {
         id--;
     }
