@@ -103,6 +103,13 @@ public class GuiManager extends GuiBase {
     private static final int COLOR_TEXT = 0xFFFFFF;
     private static final int COLOR_TEXT_GRAY = 0xA0A0A0;
     private static final int COLOR_TEXT_ERROR = 0xFF6060;
+    private static final int COLOR_TEXT_ACTIVE = 0xFFFF80;
+    private static final int COLOR_SELECTED_BORDER = 0xFFFFD040;
+    private static final int COLOR_ON = 0xFF3A7A2E;
+    private static final int COLOR_ON_LIGHT = 0xFF5BA84A;
+    private static final int COLOR_ON_DARK = 0xFF27561F;
+    private static final float MENU_TEXT_SCALE = 0.7F;
+    private static final int MENU_BUTTON_PADDING = 4;
 
     // dark panels sunken into the frame
     private static final int COLOR_INSET = 0xFF2C2F34;
@@ -680,6 +687,70 @@ public class GuiManager extends GuiBase {
         drawColoredRect(x, y, w, h, hover ? COLOR_HIGHLIGHT : COLOR_RAISED_BORDER);
         drawRaised(x + 1, y + 1, w - 2, h - 2, active);
         endRects(started);
+    }
+
+    /**
+     * A button with a centered label, used inside the menus of the commands
+     */
+    public void drawMenuButton(int x, int y, int w, int h, String label, boolean hover, boolean active) {
+        drawDarkButton(x, y, w, h, hover, active);
+        int textWidth = (int) (getStringWidth(label) * MENU_TEXT_SCALE);
+        drawShadowString(
+                label,
+                x + (w - textWidth + 1) / 2,
+                y + (h - (int) (getFontHeight() * MENU_TEXT_SCALE)) / 2 + 1,
+                MENU_TEXT_SCALE,
+                active ? COLOR_TEXT_ACTIVE : COLOR_TEXT);
+    }
+
+    /**
+     * A button that can be turned on and off, on buttons are green and the selected button has a yellow border
+     */
+    public void drawToggleButton(int x, int y, int w, int h, String label, boolean hover, boolean on,
+            boolean selected) {
+        boolean started = beginRects();
+        drawColoredRect(x, y, w, h, selected ? COLOR_SELECTED_BORDER : hover ? COLOR_HIGHLIGHT : COLOR_RAISED_BORDER);
+        if (on) {
+            drawColoredRect(x + 1, y + 1, w - 2, h - 2, COLOR_ON);
+            drawColoredRect(x + 1, y + 1, w - 2, 1, COLOR_ON_LIGHT);
+            drawColoredRect(x + 1, y + h - 2, w - 2, 1, COLOR_ON_DARK);
+        } else {
+            drawRaised(x + 1, y + 1, w - 2, h - 2, false);
+        }
+        endRects(started);
+        int textWidth = (int) (getStringWidth(label) * MENU_TEXT_SCALE);
+        drawShadowString(
+                label,
+                x + (w - textWidth + 1) / 2,
+                y + (h - (int) (getFontHeight() * MENU_TEXT_SCALE)) / 2 + 1,
+                MENU_TEXT_SCALE,
+                COLOR_TEXT);
+    }
+
+    public int getMenuButtonWidth(String label) {
+        return (int) Math.ceil(getStringWidth(label) * MENU_TEXT_SCALE) + MENU_BUTTON_PADDING * 2;
+    }
+
+    /**
+     * A small arrow pointing up or down, drawn in a button
+     */
+    public void drawArrowButton(int x, int y, int w, int h, boolean up, boolean hover, boolean pressed) {
+        boolean started = beginRects();
+        drawDarkButton(x, y, w, h, hover, pressed);
+        int centerX = x + w / 2;
+        int centerY = y + h / 2 - 1;
+        for (int i = 0; i < 3; i++) {
+            int row = up ? centerY + i : centerY + 2 - i;
+            drawColoredRect(centerX - i, row, i * 2 + 1, 1, COLOR_ICON);
+        }
+        endRects(started);
+    }
+
+    /**
+     * A sunken text field, highlighted while it is selected
+     */
+    public void drawTextField(int x, int y, int w, int h, boolean selected) {
+        drawSlot(x, y, w, h, selected ? COLOR_HIGHLIGHT : COLOR_SLOT_BORDER);
     }
 
     /**

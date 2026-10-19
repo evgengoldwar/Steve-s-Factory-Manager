@@ -19,7 +19,7 @@ public class ComponentMenuTargetInventory extends ComponentMenuTarget {
         super(parent);
 
         textBoxes = new TextBoxNumberList();
-        textBoxes.addTextBox(startTextBox = new TextBoxNumber(39, 49, 2, false) {
+        textBoxes.addTextBox(startTextBox = new TextBoxNumber(RANGE_START_X, ADVANCED_Y, 2, false) {
 
             @Override
             public void onNumberChanged() {
@@ -28,7 +28,7 @@ public class ComponentMenuTargetInventory extends ComponentMenuTarget {
                 }
             }
         });
-        textBoxes.addTextBox(endTextBox = new TextBoxNumber(60, 49, 2, false) {
+        textBoxes.addTextBox(endTextBox = new TextBoxNumber(RANGE_END_X, ADVANCED_Y, 2, false) {
 
             @Override
             public void onNumberChanged() {
@@ -39,6 +39,9 @@ public class ComponentMenuTargetInventory extends ComponentMenuTarget {
         });
     }
 
+    private static final int RANGE_START_X = PANEL_X + 4;
+    private static final int RANGE_END_X = PANEL_X + 40;
+
     private TextBoxNumberList textBoxes;
     private TextBoxNumber startTextBox;
     private TextBoxNumber endTextBox;
@@ -48,7 +51,7 @@ public class ComponentMenuTargetInventory extends ComponentMenuTarget {
 
     @Override
     protected Button getSecondButton() {
-        return new Button(27) {
+        return new Button(SECOND_BUTTON_Y) {
 
             @Override
             protected String getLabel() {
@@ -73,6 +76,8 @@ public class ComponentMenuTargetInventory extends ComponentMenuTarget {
     @Override
     protected void drawAdvancedComponent(GuiManager gui, int mX, int mY) {
         textBoxes.draw(gui, mX, mY);
+        // the slots from the first box up to the second one are used
+        gui.drawString("-", RANGE_START_X + 27, ADVANCED_Y + 3, 0.8F, 0xFFFFFF);
     }
 
     @Override

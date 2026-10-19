@@ -25,16 +25,12 @@ public abstract class ScrollController<T> {
 
     private static final int ARROW_SIZE_W = 10;
     private static final int ARROW_SIZE_H = 6;
-    private static final int ARROW_SRC_X = 64;
-    private static final int ARROW_SRC_Y = 165;
     private static final int ARROW_X = 105;
     private static final int ARROW_Y_UP = 32;
     private static final int ARROW_Y_DOWN = 42;
 
     private static final int TEXT_BOX_SIZE_W = 64;
     private static final int TEXT_BOX_SIZE_H = 12;
-    private static final int TEXT_BOX_SRC_X = 0;
-    private static final int TEXT_BOX_SRC_Y = 165;
     private static final int TEXT_BOX_X = 5;
     private static final int TEXT_BOX_Y = 5;
     private static final int TEXT_BOX_TEXT_X = 3;
@@ -50,6 +46,19 @@ public abstract class ScrollController<T> {
     private int startX = 5;
     private int scrollingUpperLimit = TEXT_BOX_Y + TEXT_BOX_SIZE_H;
     private boolean disabledScroll;
+
+    // the layout can be changed by menus that have more space
+    private int textBoxX = TEXT_BOX_X;
+    private int textBoxY = TEXT_BOX_Y;
+    private int textBoxW = TEXT_BOX_SIZE_W;
+    private int arrowX = ARROW_X;
+    private int arrowUpY = ARROW_Y_UP;
+    private int arrowDownY = ARROW_Y_DOWN;
+    private int arrowW = ARROW_SIZE_W;
+    private int arrowH = ARROW_SIZE_H;
+    private int amountX = AMOUNT_TEXT_X;
+    private int amountY = AMOUNT_TEXT_Y;
+    private int scrollingLowerLimit = FlowComponent.getMenuOpenSize();
 
     public ScrollController(boolean hasSearchBox) {
         this(hasSearchBox ? "" : null);
@@ -114,7 +123,7 @@ public abstract class ScrollController<T> {
                 if (id >= 0 && id < result.size()) {
                     int x = getScrollingStartX() + ITEM_SIZE_WITH_MARGIN * col;
                     int y = getScrollingStartY() + row * ITEM_SIZE_WITH_MARGIN - offset;
-                    if (y > scrollingUpperLimit && y + ITEM_SIZE < FlowComponent.getMenuOpenSize()) {
+                    if (y > scrollingUpperLimit && y + ITEM_SIZE < scrollingLowerLimit) {
                         points.add(new Point(id, x, y));
                     }
                 }
@@ -125,7 +134,7 @@ public abstract class ScrollController<T> {
     }
 
     public void onClick(int mX, int mY, int button) {
-        if (CollisionHelper.inBounds(TEXT_BOX_X, TEXT_BOX_Y, TEXT_BOX_SIZE_W, TEXT_BOX_SIZE_H, mX, mY)) {
+        if (hasSearchBox && CollisionHelper.inBounds(textBoxX, textBoxY, textBoxW, TEXT_BOX_SIZE_H, mX, mY)) {
             if (button == 0 || !selected) {
                 selected = !selected;
             } else if (hasSearchBox) {
@@ -167,22 +176,15 @@ public abstract class ScrollController<T> {
 
     @SideOnly(Side.CLIENT)
     public void draw(GuiManager gui, int mX, int mY) {
-        int srcBoxY = selected ? 1 : 0;
 
         if (hasSearchBox) {
-            gui.drawTexture(
-                    TEXT_BOX_X,
-                    TEXT_BOX_Y,
-                    TEXT_BOX_SRC_X,
-                    TEXT_BOX_SRC_Y + srcBoxY * TEXT_BOX_SIZE_H,
-                    TEXT_BOX_SIZE_W,
-                    TEXT_BOX_SIZE_H);
-            gui.drawString(textBox.getText(), TEXT_BOX_X + TEXT_BOX_TEXT_X, TEXT_BOX_Y + TEXT_BOX_TEXT_Y, 0xFFFFFF);
+            gui.drawTextField(textBoxX, textBoxY, textBoxW, TEXT_BOX_SIZE_H, selected);
+            gui.drawString(textBox.getText(), textBoxX + TEXT_BOX_TEXT_X, textBoxY + TEXT_BOX_TEXT_Y, 0xFFFFFF);
 
             if (selected) {
                 gui.drawCursor(
-                        TEXT_BOX_X + textBox.getCursorPosition(gui) + CURSOR_X,
-                        TEXT_BOX_Y + CURSOR_Y,
+                        textBoxX + textBox.getCursorPosition(gui) + CURSOR_X,
+                        textBoxY + CURSOR_Y,
                         CURSOR_Z,
                         0xFFFFFFFF);
             }
@@ -190,8 +192,8 @@ public abstract class ScrollController<T> {
             if (textBox.getText().length() > 0 || result.size() > 0) {
                 gui.drawString(
                         Localization.ITEMS_FOUND.toString() + " " + result.size(),
-                        AMOUNT_TEXT_X,
-                        AMOUNT_TEXT_Y,
+                        amountX,
+                        amountY,
                         0.7F,
                         0x404040);
             }
@@ -242,21 +244,19 @@ public abstract class ScrollController<T> {
     @SideOnly(Side.CLIENT)
     private void drawArrow(GuiManager gui, boolean down, int mX, int mY) {
         if (canScroll) {
-            int srcArrowX = canScroll ? clicked && down == (dir == 1) ? 2 : inArrowBounds(down, mX, mY) ? 1 : 0 : 3;
-            int srcArrowY = down ? 1 : 0;
-
-            gui.drawTexture(
-                    ARROW_X,
-                    down ? ARROW_Y_DOWN : ARROW_Y_UP,
-                    ARROW_SRC_X + srcArrowX * ARROW_SIZE_W,
-                    ARROW_SRC_Y + srcArrowY * ARROW_SIZE_H,
-                    ARROW_SIZE_W,
-                    ARROW_SIZE_H);
+            gui.drawArrowButton(
+                    arrowX,
+                    down ? arrowDownY : arrowUpY,
+                    arrowW,
+                    arrowH,
+                    !down,
+                    inArrowBounds(down, mX, mY),
+                    clicked && down == (dir == 1));
         }
     }
 
     private boolean inArrowBounds(boolean down, int mX, int mY) {
-        return CollisionHelper.inBounds(ARROW_X, down ? ARROW_Y_DOWN : ARROW_Y_UP, ARROW_SIZE_W, ARROW_SIZE_H, mX, mY);
+        return CollisionHelper.inBounds(arrowX, down ? arrowDownY : arrowUpY, arrowW, arrowH, mX, mY);
     }
 
     @SideOnly(Side.CLIENT)
@@ -286,6 +286,32 @@ public abstract class ScrollController<T> {
 
     public void setItemUpperLimit(int n) {
         scrollingUpperLimit = n;
+    }
+
+    public void setItemLowerLimit(int n) {
+        scrollingLowerLimit = n;
+    }
+
+    public void setSearchBox(int x, int y, int w) {
+        textBoxX = x;
+        textBoxY = y;
+        textBoxW = w;
+        if (textBox != null) {
+            textBox.setWidth(w - TEXT_BOX_TEXT_X * 2);
+        }
+    }
+
+    public void setArrows(int x, int upY, int downY, int w, int h) {
+        arrowX = x;
+        arrowUpY = upY;
+        arrowDownY = downY;
+        arrowW = w;
+        arrowH = h;
+    }
+
+    public void setAmountText(int x, int y) {
+        amountX = x;
+        amountY = y;
     }
 
     public void updateSearch() {

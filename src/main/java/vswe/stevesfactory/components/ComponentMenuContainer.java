@@ -38,12 +38,17 @@ import vswe.stevesfactory.network.PacketHandler;
 
 public abstract class ComponentMenuContainer extends ComponentMenu {
 
-    private static final int BACK_SRC_X = 46;
-    private static final int BACK_SRC_Y = 52;
-    private static final int BACK_SIZE_W = 9;
-    private static final int BACK_SIZE_H = 9;
-    private static final int BACK_X = 108;
-    private static final int BACK_Y = 57;
+    private static final int MENU_HEIGHT = 118;
+    private static final int MARGIN = 4;
+    private static final int SEARCH_WIDTH = 110;
+    private static final int LIST_Y = 22;
+    private static final int LIST_COLUMNS = 9;
+    private static final int LIST_ROWS = 4;
+    private static final int ARROW_SIZE = 10;
+    private static final int BUTTON_HEIGHT = 12;
+    private static final int SMALL_BUTTON_HEIGHT = 10;
+    private static final int BUTTON_Y = MENU_HEIGHT - BUTTON_HEIGHT - 2;
+    private static final int BUTTON_SPACING = 3;
 
     private static final int INVENTORY_SIZE = 16;
     private static final int INVENTORY_SRC_X = 30;
@@ -53,7 +58,7 @@ public abstract class ComponentMenuContainer extends ComponentMenu {
     private static final int RADIO_BUTTON_MULTI_Y = 27;
     private static final int RADIO_BUTTON_SPACING = 15;
 
-    private static final int MENU_WIDTH = 120;
+    private static final int MENU_WIDTH = 200;
     private static final int TEXT_MULTI_MARGIN_X = 5;
     private static final int TEXT_MULTI_Y = 10;
     private static final int TEXT_MULTI_ERROR_Y = 30;
@@ -385,56 +390,8 @@ public abstract class ComponentMenuContainer extends ComponentMenu {
         };
 
         buttons = new ArrayList<Button>();
-        buttons.add(
-                new PageButton(
-                        Localization.FILTER_SHORT,
-                        Page.MAIN,
-                        Localization.FILTER_LONG,
-                        Page.FILTER,
-                        false,
-                        102,
-                        21));
-        buttons.add(
-                new PageButton(
-                        Localization.MULTI_SHORT,
-                        Page.MAIN,
-                        Localization.MULTI_LONG,
-                        Page.MULTI,
-                        false,
-                        111,
-                        21));
-
-        ComponentMenuContainer.Page[] subFilterPages = { ComponentMenuContainer.Page.POSITION,
-                ComponentMenuContainer.Page.DISTANCE, ComponentMenuContainer.Page.SELECTION,
-                ComponentMenuContainer.Page.VARIABLE };
-
-        for (int i = 0; i < subFilterPages.length; i++) {
-            buttons.add(
-                    new ComponentMenuContainer.PageButton(
-                            Localization.SUB_MENU_SHORT,
-                            ComponentMenuContainer.Page.FILTER,
-                            Localization.SUB_MENU_LONG,
-                            subFilterPages[i],
-                            true,
-                            FILTER_BUTTON_X,
-                            CHECK_BOX_FILTER_Y + CHECK_BOX_FILTER_SPACING * i + FILTER_BUTTON_Y));
-        }
-        buttons.add(
-                new ComponentMenuContainer.Button(
-                        Localization.CLEAR_SHORT,
-                        ComponentMenuContainer.Page.FILTER,
-                        Localization.CLEAR_LONG,
-                        true,
-                        FILTER_RESET_BUTTON_X,
-                        CHECK_BOX_FILTER_INVERT_Y) {
-
-                    @Override
-                    void onClick() {
-                        filter.clear();
-                    }
-                });
-
-        buttons.add(new Button(Localization.SELECT_ALL_SHORT, Page.MAIN, Localization.SELECT_ALL_LONG, false, 102, 51) {
+        // buttons below the list of containers, the selection buttons to the left and the pages to the right
+        buttons.add(new Button(Localization.SELECT_ALL_SHORT, Page.MAIN, Localization.SELECT_ALL_LONG) {
 
             @Override
             void onClick() {
@@ -446,54 +403,100 @@ public abstract class ComponentMenuContainer extends ComponentMenu {
             }
         });
 
-        buttons.add(
-                new Button(Localization.SELECT_NONE_SHORT, Page.MAIN, Localization.SELECT_NONE_LONG, false, 111, 51) {
+        buttons.add(new Button(Localization.SELECT_NONE_SHORT, Page.MAIN, Localization.SELECT_NONE_LONG) {
 
-                    @Override
-                    void onClick() {
-                        for (IContainerSelection iContainerSelection : scrollController.getResult()) {
-                            if (selectedInventories.contains(iContainerSelection.getId())) {
-                                scrollController.onClick(iContainerSelection, -1, -1, 0);
-                            }
-                        }
+            @Override
+            void onClick() {
+                for (IContainerSelection iContainerSelection : scrollController.getResult()) {
+                    if (selectedInventories.contains(iContainerSelection.getId())) {
+                        scrollController.onClick(iContainerSelection, -1, -1, 0);
                     }
-                });
+                }
+            }
+        });
 
+        buttons.add(new Button(Localization.SELECT_INVERT_SHORT, Page.MAIN, Localization.SELECT_INVERT_LONG) {
+
+            @Override
+            void onClick() {
+                for (IContainerSelection iContainerSelection : scrollController.getResult()) {
+                    scrollController.onClick(iContainerSelection, -1, -1, 0);
+                }
+            }
+        });
+
+        buttons.add(new Button(Localization.SELECT_VARIABLE_SHORT, Page.MAIN, Localization.SELECT_VARIABLE_LONG) {
+
+            @Override
+            void onClick() {
+                if (scrollController.getText().equals(".var")) {
+                    scrollController.setTextAndCursor(".all");
+                } else {
+                    scrollController.setTextAndCursor(".var");
+                }
+            }
+
+            @Override
+            boolean isActive() {
+                return scrollController.getText().equals(".var");
+            }
+        });
+
+        buttons.add(new PageButton(Localization.MULTI_SHORT, Page.MAIN, Localization.MULTI_LONG, Page.MULTI, true));
+        buttons.add(new PageButton(Localization.FILTER_SHORT, Page.MAIN, Localization.FILTER_LONG, Page.FILTER, true));
+
+        // the pages below the main page have a button going back to the page they were opened from
+        buttons.add(new Button(Localization.GO_BACK, null, Localization.GO_BACK) {
+
+            @Override
+            void onClick() {
+                currentPage = currentPage.parent;
+            }
+
+            @Override
+            boolean isVisible() {
+                return currentPage.parent != null;
+            }
+        });
+
+        ComponentMenuContainer.Page[] subFilterPages = { ComponentMenuContainer.Page.POSITION,
+                ComponentMenuContainer.Page.DISTANCE, ComponentMenuContainer.Page.SELECTION,
+                ComponentMenuContainer.Page.VARIABLE };
+
+        for (int i = 0; i < subFilterPages.length; i++) {
+            buttons.add(
+                    new PageButton(
+                            Localization.SUB_MENU_SHORT,
+                            Page.FILTER,
+                            Localization.SUB_MENU_LONG,
+                            subFilterPages[i],
+                            FILTER_BUTTON_X,
+                            CHECK_BOX_FILTER_Y + CHECK_BOX_FILTER_SPACING * i + FILTER_BUTTON_Y));
+        }
         buttons.add(
                 new Button(
-                        Localization.SELECT_INVERT_SHORT,
-                        Page.MAIN,
-                        Localization.SELECT_INVERT_LONG,
-                        false,
-                        102,
-                        60) {
+                        Localization.CLEAR_SHORT,
+                        Page.FILTER,
+                        Localization.CLEAR_LONG,
+                        FILTER_RESET_BUTTON_X,
+                        CHECK_BOX_FILTER_INVERT_Y) {
 
                     @Override
                     void onClick() {
-                        for (IContainerSelection iContainerSelection : scrollController.getResult()) {
-                            scrollController.onClick(iContainerSelection, -1, -1, 0);
-                        }
+                        filter.clear();
                     }
                 });
 
-        buttons.add(
-                new Button(
-                        Localization.SELECT_VARIABLE_SHORT,
-                        Page.MAIN,
-                        Localization.SELECT_VARIABLE_LONG,
-                        false,
-                        111,
-                        60) {
-
-                    @Override
-                    void onClick() {
-                        if (scrollController.getText().equals(".var")) {
-                            scrollController.setTextAndCursor(".all");
-                        } else {
-                            scrollController.setTextAndCursor(".var");
-                        }
-                    }
-                });
+        // the list uses the whole width of the menu
+        scrollController.setSearchBox(MARGIN, MARGIN, SEARCH_WIDTH);
+        scrollController.setAmountText(MARGIN + SEARCH_WIDTH + 6, MARGIN + 3);
+        scrollController.setX(MARGIN);
+        scrollController.setItemUpperLimit(LIST_Y - 3);
+        scrollController.setItemLowerLimit(BUTTON_Y - 2);
+        scrollController.setItemsPerRow(LIST_COLUMNS);
+        scrollController.setVisibleRows(LIST_ROWS);
+        scrollController
+                .setArrows(MENU_WIDTH - MARGIN - ARROW_SIZE, LIST_Y, BUTTON_Y - 4 - ARROW_SIZE, ARROW_SIZE, ARROW_SIZE);
 
         currentPage = Page.MAIN;
     }
@@ -603,22 +606,45 @@ public abstract class ComponentMenuContainer extends ComponentMenu {
         }
 
         filter.textBoxes.draw(gui, mX, mY);
+        layoutButtons(gui);
         for (Button button : buttons) {
             button.draw(gui, mX, mY);
         }
         filter.checkBoxes.draw(gui, mX, mY);
 
-        if (currentPage.parent != null) {
-            int srcBackX = inBackBounds(mX, mY) ? 1 : 0;
-
-            gui.drawTexture(BACK_X, BACK_Y, BACK_SRC_X + srcBackX * BACK_SIZE_W, BACK_SRC_Y, BACK_SIZE_W, BACK_SIZE_H);
-        }
-
         hasUpdated = false;
     }
 
-    private boolean inBackBounds(int mX, int mY) {
-        return CollisionHelper.inBounds(BACK_X, BACK_Y, BACK_SIZE_W, BACK_SIZE_H, mX, mY);
+    /**
+     * Places the buttons shown below the content next to each other, they are as wide as their labels
+     */
+    @SideOnly(Side.CLIENT)
+    private void layoutButtons(GuiManager gui) {
+        int left = MARGIN;
+        int right = MENU_WIDTH - MARGIN;
+        for (Button button : buttons) {
+            button.width = gui.getMenuButtonWidth(button.label.toString());
+            if (button.isBottomButton && button.isVisible()) {
+                if (button.alignRight) {
+                    right -= button.width;
+                    button.x = right;
+                    right -= BUTTON_SPACING;
+                } else {
+                    button.x = left;
+                    left += button.width + BUTTON_SPACING;
+                }
+            }
+        }
+    }
+
+    @Override
+    public int getMenuWidth() {
+        return MENU_WIDTH;
+    }
+
+    @Override
+    public int getMenuHeight() {
+        return MENU_HEIGHT;
     }
 
     // ugly way to make sure the filter controller isn't updating multiple times
@@ -680,10 +706,6 @@ public abstract class ComponentMenuContainer extends ComponentMenu {
         for (Button button : buttons) {
             button.drawMouseOver(gui, mX, mY);
         }
-
-        if (currentPage.parent != null && inBackBounds(mX, mY)) {
-            gui.drawMouseOver(Localization.GO_BACK.toString(), mX, mY);
-        }
     }
 
     @Override
@@ -713,9 +735,6 @@ public abstract class ComponentMenuContainer extends ComponentMenu {
         }
         filter.checkBoxes.onClick(mX, mY);
         filter.textBoxes.onClick(mX, mY, b);
-        if (currentPage.parent != null && inBackBounds(mX, mY)) {
-            currentPage = currentPage.parent;
-        }
     }
 
     private boolean hasMultipleInventories() {
@@ -969,45 +988,39 @@ public abstract class ComponentMenuContainer extends ComponentMenu {
 
     private abstract class Button {
 
-        int x, y;
+        int x, y, width, height;
         Localization label;
         Localization description;
         Page page;
+        // buttons below the content are placed automatically
+        boolean isBottomButton;
+        boolean alignRight;
 
-        private final int width;
-        private final int height;
-        private final int srcX;
-        private final int srcY;
+        protected Button(Localization label, Page page, Localization description) {
+            this(label, page, description, 0, BUTTON_Y);
+            this.height = BUTTON_HEIGHT;
+            this.isBottomButton = true;
+        }
 
-        protected Button(Localization label, Page page, Localization description, boolean wide, int x, int y) {
+        protected Button(Localization label, Page page, Localization description, int x, int y) {
             this.x = x;
             this.y = y;
             this.page = page;
             this.label = label;
             this.description = description;
-
-            if (wide) {
-                width = 20;
-                srcX = 58;
-            } else {
-                width = 8;
-                srcX = 50;
-            }
-            height = 8;
-            srcY = 189;
+            this.height = SMALL_BUTTON_HEIGHT;
         }
 
         abstract void onClick();
 
         boolean inBounds(int mX, int mY) {
-            return isVisible() && CollisionHelper.inBounds(x, y, width, height, mX, mY);
+            return isVisible() && width > 0 && CollisionHelper.inBounds(x, y, width - 1, height - 1, mX, mY);
         }
 
         @SideOnly(Side.CLIENT)
         void draw(GuiManager gui, int mX, int mY) {
             if (isVisible()) {
-                gui.drawTexture(x, y, srcX, srcY + (inBounds(mX, mY) ? height : 0), width, height);
-                gui.drawCenteredString(label.toString(), x + 1, y + 2, 0.7F, width - 2, 0x404040);
+                gui.drawMenuButton(x, y, width, height, label.toString(), inBounds(mX, mY), isActive());
             }
         }
 
@@ -1021,15 +1034,25 @@ public abstract class ComponentMenuContainer extends ComponentMenu {
         boolean isVisible() {
             return currentPage == page;
         }
+
+        boolean isActive() {
+            return false;
+        }
     }
 
     private class PageButton extends Button {
 
         private Page targetPage;
 
-        private PageButton(Localization label, Page page, Localization description, Page targetPage, boolean wide,
-                int x, int y) {
-            super(label, page, description, wide, x, y);
+        private PageButton(Localization label, Page page, Localization description, Page targetPage,
+                boolean alignRight) {
+            super(label, page, description);
+            this.targetPage = targetPage;
+            this.alignRight = alignRight;
+        }
+
+        private PageButton(Localization label, Page page, Localization description, Page targetPage, int x, int y) {
+            super(label, page, description, x, y);
             this.targetPage = targetPage;
         }
 

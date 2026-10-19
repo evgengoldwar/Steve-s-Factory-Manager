@@ -34,16 +34,16 @@ public class ComponentMenuTargetTank extends ComponentMenuTarget {
                 .add(new RadioButton(RADIO_BUTTON_X, RADIO_BUTTON_Y + RADIO_BUTTON_SPACING, Localization.FILLED_TANK));
     }
 
-    private static final int RADIO_BUTTON_X = 36;
-    private static final int RADIO_BUTTON_Y = 45;
-    private static final int RADIO_BUTTON_SPACING = 12;
+    private static final int RADIO_BUTTON_X = PANEL_X;
+    private static final int RADIO_BUTTON_Y = ADVANCED_Y - 2;
+    private static final int RADIO_BUTTON_SPACING = 11;
 
     private boolean[] onlyFull = new boolean[directions.length];
     private RadioButtonList radioButtons;
 
     @Override
     protected Button getSecondButton() {
-        return new Button(27) {
+        return new Button(SECOND_BUTTON_Y) {
 
             @Override
             protected String getLabel() {

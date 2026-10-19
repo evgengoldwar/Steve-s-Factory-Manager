@@ -33,8 +33,6 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
     private static final int COMPONENT_SIZE_W = 64;
     private static final int COMPONENT_SIZE_H = 20;
-    private static final int COMPONENT_SIZE_LARGE_W = 124;
-    private static final int COMPONENT_SIZE_LARGE_H = 152;
     private static final int DRAGGABLE_SIZE = 17;
 
     private static final int ARROW_X = -10;
@@ -42,14 +40,13 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     private static final int ARROW_SIZE_W = 9;
     private static final int ARROW_SIZE_H = 10;
 
-    private static final int MENU_ITEM_SIZE_W = 120;
     private static final int MENU_ITEM_SIZE_H = 13;
     private static final int MENU_X = 2;
     private static final int MENU_Y = 20;
     private static final int MENU_SIZE_H = 130;
     private static final int MENU_ITEM_CAPACITY = 5;
 
-    private static final int MENU_ARROW_X = 109;
+    private static final int MENU_ARROW_RIGHT = 11;
     private static final int MENU_ARROW_Y = 2;
     private static final int MENU_ARROW_SIZE_W = 9;
     private static final int MENU_ARROW_SIZE_H = 9;
@@ -309,20 +306,16 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
                 int itemX = getMenuAreaX();
                 int itemY = y + getMenuItemY(i);
+                int itemW = getMenuAreaWidth();
                 boolean isOpen = i == openMenuId;
                 // the menu headers are buttons, clicking them opens the menu
-                boolean hover = CollisionHelper.inBounds(
-                        MENU_X,
-                        getMenuItemY(i),
-                        MENU_ITEM_SIZE_W - 1,
-                        MENU_ITEM_SIZE_H - 1,
-                        internalX,
-                        internalY);
-                gui.drawDarkButton(itemX, itemY, MENU_ITEM_SIZE_W, MENU_ITEM_SIZE_H, hover, isOpen);
+                boolean hover = CollisionHelper
+                        .inBounds(MENU_X, getMenuItemY(i), itemW - 1, MENU_ITEM_SIZE_H - 1, internalX, internalY);
+                gui.drawDarkButton(itemX, itemY, itemW, MENU_ITEM_SIZE_H, hover, isOpen);
 
                 drawChevron(
                         gui,
-                        itemX + MENU_ARROW_X,
+                        itemX + itemW - MENU_ARROW_RIGHT,
                         itemY + MENU_ARROW_Y,
                         MENU_ARROW_SIZE_W,
                         MENU_ARROW_SIZE_H,
@@ -1106,7 +1099,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
     private boolean inMenuArrowBounds(int i, int internalX, int internalY) {
         return CollisionHelper.inBounds(
-                MENU_X + MENU_ARROW_X,
+                MENU_X + getMenuAreaWidth() - MENU_ARROW_RIGHT,
                 getMenuItemY(i) + MENU_ARROW_Y,
                 MENU_ARROW_SIZE_W,
                 MENU_ARROW_SIZE_H,
@@ -1121,7 +1114,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
             if (menus.get(i).isVisible()) {
                 ret += MENU_ITEM_SIZE_H - 1;
                 if (openMenuId == i) {
-                    ret += getMenuOpenSize() - 1;
+                    ret += getOpenMenuSize(i) - 1;
                 }
             }
         }
@@ -1133,8 +1126,28 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         return MENU_SIZE_H - MENU_ITEM_CAPACITY * (MENU_ITEM_SIZE_H - 1);
     }
 
+    /**
+     * The space an open menu takes up, including the borders between it and the headers
+     */
+    private int getOpenMenuSize(int id) {
+        return menus.get(id).getMenuHeight() + 2;
+    }
+
+    /**
+     * Open commands are as wide as their widest menu
+     */
+    private int getMenuAreaWidth() {
+        int width = ComponentMenu.DEFAULT_WIDTH;
+        for (ComponentMenu menu : menus) {
+            if (menu.isVisible()) {
+                width = Math.max(width, menu.getMenuWidth());
+            }
+        }
+        return width;
+    }
+
     public int getComponentWidth() {
-        return isLarge ? COMPONENT_SIZE_LARGE_W : COMPONENT_SIZE_W;
+        return isLarge ? getMenuAreaWidth() + MENU_X * 2 : COMPONENT_SIZE_W;
     }
 
     public int getComponentHeight() {
@@ -1148,11 +1161,11 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
             if (menus.get(i).isVisible()) {
                 height += MENU_ITEM_SIZE_H - 1;
                 if (openMenuId == i) {
-                    height += getMenuOpenSize() - 1;
+                    height += getOpenMenuSize(i) - 1;
                 }
             }
         }
-        return Math.min(COMPONENT_SIZE_LARGE_H, height + LARGE_PADDING);
+        return height + LARGE_PADDING;
     }
 
     public int getTitleHeight() {

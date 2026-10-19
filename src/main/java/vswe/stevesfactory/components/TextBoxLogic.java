@@ -16,6 +16,10 @@ public class TextBoxLogic {
     private boolean updatedCursor;
     private float mult;
 
+    public void setWidth(int width) {
+        this.width = width;
+    }
+
     public TextBoxLogic(int charLimit, int width) {
         this.charLimit = charLimit;
         this.width = width;

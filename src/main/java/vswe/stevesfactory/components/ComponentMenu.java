@@ -15,6 +15,8 @@ import vswe.stevesfactory.network.PacketHandler;
 
 public abstract class ComponentMenu implements IComponentNetworkReader {
 
+    public static final int DEFAULT_WIDTH = 120;
+
     private FlowComponent parent;
     private int id;
 
@@ -71,6 +73,20 @@ public abstract class ComponentMenu implements IComponentNetworkReader {
     public abstract void writeToNBT(NBTTagCompound nbtTagCompound, boolean pickup);
 
     public void addErrors(List<String> errors) {}
+
+    /**
+     * The width of the menu when it is open, the command gets as wide as its widest menu
+     */
+    public int getMenuWidth() {
+        return DEFAULT_WIDTH;
+    }
+
+    /**
+     * The height of the content of the menu when it is open
+     */
+    public int getMenuHeight() {
+        return FlowComponent.getMenuOpenSize() - 2;
+    }
 
     public boolean isVisible() {
         return true;

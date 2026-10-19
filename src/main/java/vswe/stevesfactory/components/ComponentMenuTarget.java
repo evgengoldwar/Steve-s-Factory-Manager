@@ -6,8 +6,6 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import org.lwjgl.opengl.GL11;
-
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import vswe.stevesfactory.CollisionHelper;
@@ -28,25 +26,27 @@ public abstract class ComponentMenuTarget extends ComponentMenu {
 
     }
 
-    private static final int DIRECTION_SIZE_W = 31;
-    private static final int DIRECTION_SIZE_H = 12;
-    private static final int DIRECTION_SRC_X = 0;
-    private static final int DIRECTION_SRC_Y = 70;
-    private static final int DIRECTION_X_LEFT = 2;
-    private static final int DIRECTION_X_RIGHT = 88;
-    private static final int DIRECTION_Y = 5;
-    private static final int DIRECTION_MARGIN = 10;
-    private static final int DIRECTION_TEXT_X = 2;
-    private static final int DIRECTION_TEXT_Y = 3;
+    // the sides are listed to the left, the settings of the selected side are shown to the right
+    private static final int MENU_WIDTH = 200;
+    private static final int MENU_HEIGHT = 74;
+    private static final int DIRECTION_SIZE_W = 56;
+    private static final int DIRECTION_SIZE_H = 14;
+    private static final int DIRECTION_X_LEFT = 4;
+    private static final int DIRECTION_X_RIGHT = 64;
+    private static final int DIRECTION_Y = 4;
+    private static final int DIRECTION_MARGIN = 6;
 
-    private static final int BUTTON_SIZE_W = 42;
-    private static final int BUTTON_SIZE_H = 12;
-    private static final int BUTTON_SRC_X = 0;
-    private static final int BUTTON_SRC_Y = 106;
-    private static final int BUTTON_X = 39;
-    private static final int BUTTON_TEXT_Y = 5;
+    private static final int SEPARATOR_X = 124;
+    private static final int COLOR_SEPARATOR = 0xFF141517;
+    protected static final int PANEL_X = 128;
+    protected static final int PANEL_W = MENU_WIDTH - PANEL_X - 4;
+    private static final int PANEL_TITLE_Y = 5;
+    private static final int BUTTON_SIZE_H = 14;
+    protected static final int FIRST_BUTTON_Y = 16;
+    protected static final int SECOND_BUTTON_Y = 34;
+    protected static final int ADVANCED_Y = 54;
 
-    private Button[] buttons = { new Button(5) {
+    private Button[] buttons = { new Button(FIRST_BUTTON_Y) {
 
         @Override
         protected String getLabel() {
@@ -83,59 +83,56 @@ public abstract class ComponentMenuTarget extends ComponentMenu {
     @Override
     public void draw(GuiManager gui, int mX, int mY) {
         for (int i = 0; i < directions.length; i++) {
-            ForgeDirection direction = directions[i];
-
             int x = getDirectionX(i);
             int y = getDirectionY(i);
-
-            int srcDirectionX = isActive(i) ? 1 : 0;
-            int srcDirectionY = selectedDirectionId != -1 && selectedDirectionId != i ? 2
-                    : CollisionHelper.inBounds(x, y, DIRECTION_SIZE_W, DIRECTION_SIZE_H, mX, mY) ? 1 : 0;
-
-            gui.drawTexture(
+            gui.drawToggleButton(
                     x,
                     y,
-                    DIRECTION_SRC_X + srcDirectionX * DIRECTION_SIZE_W,
-                    DIRECTION_SRC_Y + srcDirectionY * DIRECTION_SIZE_H,
                     DIRECTION_SIZE_W,
-                    DIRECTION_SIZE_H);
-
-            GL11.glPushMatrix();
-            GL11.glEnable(GL11.GL_BLEND);
-            int color = selectedDirectionId != -1 && selectedDirectionId != i ? 0x70404040 : 0x404040;
-            gui.drawString(
+                    DIRECTION_SIZE_H,
                     Localization.getForgeDirectionLocalization(i).toString(),
-                    x + DIRECTION_TEXT_X,
-                    y + DIRECTION_TEXT_Y,
-                    color);
-            GL11.glPopMatrix();
+                    CollisionHelper.inBounds(x, y, DIRECTION_SIZE_W - 1, DIRECTION_SIZE_H - 1, mX, mY),
+                    isActive(i),
+                    selectedDirectionId == i);
         }
 
-        if (selectedDirectionId != -1) {
-            for (Button button : buttons) {
-                int srcButtonY = CollisionHelper.inBounds(BUTTON_X, button.y, BUTTON_SIZE_W, BUTTON_SIZE_H, mX, mY) ? 1
-                        : 0;
+        gui.drawColoredRect(SEPARATOR_X, DIRECTION_Y, 1, MENU_HEIGHT - DIRECTION_Y * 2, COLOR_SEPARATOR);
 
-                gui.drawTexture(
-                        BUTTON_X,
+        if (selectedDirectionId != -1) {
+            gui.drawString(
+                    Localization.getForgeDirectionLocalization(selectedDirectionId).toString(),
+                    PANEL_X,
+                    PANEL_TITLE_Y,
+                    0.8F,
+                    0xFFFFFF);
+
+            for (Button button : buttons) {
+                gui.drawMenuButton(
+                        PANEL_X,
                         button.y,
-                        BUTTON_SRC_X,
-                        BUTTON_SRC_Y + srcButtonY * BUTTON_SIZE_H,
-                        BUTTON_SIZE_W,
-                        BUTTON_SIZE_H);
-                gui.drawCenteredString(
+                        PANEL_W,
+                        BUTTON_SIZE_H,
                         button.getLabel(),
-                        BUTTON_X,
-                        button.y + BUTTON_TEXT_Y,
-                        0.5F,
-                        BUTTON_SIZE_W,
-                        0x404040);
+                        CollisionHelper.inBounds(PANEL_X, button.y, PANEL_W - 1, BUTTON_SIZE_H - 1, mX, mY),
+                        false);
             }
 
             if (useAdvancedSetting(selectedDirectionId)) {
                 drawAdvancedComponent(gui, mX, mY);
             }
+        } else {
+            gui.drawSplitString(Localization.SELECT_SIDE.toString(), PANEL_X, PANEL_TITLE_Y, PANEL_W, 0.7F, 0xA0A0A0);
         }
+    }
+
+    @Override
+    public int getMenuWidth() {
+        return MENU_WIDTH;
+    }
+
+    @Override
+    public int getMenuHeight() {
+        return MENU_HEIGHT;
     }
 
     public boolean isActive(int i) {
@@ -159,7 +156,7 @@ public abstract class ComponentMenuTarget extends ComponentMenu {
     public void drawMouseOver(GuiManager gui, int mX, int mY) {
         if (selectedDirectionId != -1) {
             for (Button button : buttons) {
-                if (CollisionHelper.inBounds(BUTTON_X, button.y, BUTTON_SIZE_W, BUTTON_SIZE_H, mX, mY)) {
+                if (CollisionHelper.inBounds(PANEL_X, button.y, PANEL_W - 1, BUTTON_SIZE_H - 1, mX, mY)) {
                     gui.drawMouseOver(button.getMouseOverText(), mX, mY);
                 }
             }
@@ -170,7 +167,7 @@ public abstract class ComponentMenuTarget extends ComponentMenu {
     public void onClick(int mX, int mY, int button) {
         for (int i = 0; i < directions.length; i++) {
             if (CollisionHelper
-                    .inBounds(getDirectionX(i), getDirectionY(i), DIRECTION_SIZE_W, DIRECTION_SIZE_H, mX, mY)) {
+                    .inBounds(getDirectionX(i), getDirectionY(i), DIRECTION_SIZE_W - 1, DIRECTION_SIZE_H - 1, mX, mY)) {
                 if (selectedDirectionId == i) {
                     selectedDirectionId = -1;
                 } else {
@@ -184,7 +181,7 @@ public abstract class ComponentMenuTarget extends ComponentMenu {
 
         if (selectedDirectionId != -1) {
             for (Button optionButton : buttons) {
-                if (CollisionHelper.inBounds(BUTTON_X, optionButton.y, BUTTON_SIZE_W, BUTTON_SIZE_H, mX, mY)) {
+                if (CollisionHelper.inBounds(PANEL_X, optionButton.y, PANEL_W - 1, BUTTON_SIZE_H - 1, mX, mY)) {
                     optionButton.onClicked();
                     break;
                 }
