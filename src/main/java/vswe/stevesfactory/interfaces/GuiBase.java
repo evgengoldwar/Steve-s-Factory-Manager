@@ -330,6 +330,24 @@ public abstract class GuiBase extends GuiAntiNEI {
         setTooltipTransform(0, 0, 1F);
     }
 
+    private final List<float[]> tooltipTransforms = new ArrayList<float[]>();
+
+    /**
+     * Makes the following tooltips use coordinates of an area placed at the given position with the given scale, until
+     * {@link #popTooltipTransform()} is called
+     */
+    public void pushTooltipTransform(float x, float y, float scale) {
+        tooltipTransforms.add(new float[] { tooltipOffsetX, tooltipOffsetY, tooltipScale });
+        tooltipOffsetX += x * tooltipScale;
+        tooltipOffsetY += y * tooltipScale;
+        tooltipScale *= scale;
+    }
+
+    public void popTooltipTransform() {
+        float[] transform = tooltipTransforms.remove(tooltipTransforms.size() - 1);
+        setTooltipTransform(transform[0], transform[1], transform[2]);
+    }
+
     private int toTooltipX(int x) {
         return (int) Math.floor(tooltipOffsetX + x * tooltipScale);
     }

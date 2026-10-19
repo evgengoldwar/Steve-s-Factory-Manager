@@ -607,7 +607,7 @@ public class GuiManager extends GuiBase {
                     && worldX < component.getX() + component.getComponentWidth()
                     && worldY >= component.getY()
                     && worldY < component.getY()
-                            + (titleOnly ? FlowComponent.getTitleHeight() : component.getComponentHeight())) {
+                            + (titleOnly ? component.getTitleHeight() : component.getComponentHeight())) {
                 return component;
             }
         }
