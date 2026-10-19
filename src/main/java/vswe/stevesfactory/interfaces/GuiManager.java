@@ -91,25 +91,26 @@ public class GuiManager extends GuiBase {
     private static final int COLOR_PANEL_LIGHT = 0xFFFFFFFF;
     private static final int COLOR_PANEL_DARK = 0xFF555555;
     private static final int COLOR_OUTLINE = 0xFF000000;
-    private static final int COLOR_INSET_DARK = 0xFF373737;
     private static final int COLOR_TEXT = 0xFFFFFF;
 
-    // colors of the NEI crafting tree
-    private static final int COLOR_CANVAS = 0xFF10111A;
-    private static final int COLOR_CANVAS_OUTSIDE = 0xFF0A0A10;
-    private static final int COLOR_GRID_MINOR = 0xFF151621;
-    private static final int COLOR_GRID_MAJOR = 0xFF1B1C2A;
-    private static final int COLOR_SEPARATOR = 0xFF898B8F;
+    // like the menus of newer minecraft versions, the world is visible behind a darkened list area
+    private static final int COLOR_CANVAS = 0x50000000;
+    private static final int COLOR_CANVAS_OUTSIDE = 0x40000000;
+    private static final int COLOR_GRID_MINOR = 0x0CFFFFFF;
+    private static final int COLOR_GRID_MAJOR = 0x18FFFFFF;
+    private static final int COLOR_SEPARATOR_LIGHT = 0x40FFFFFF;
+    private static final int COLOR_SEPARATOR_DARK = 0x90000000;
 
-    private static final int COLOR_TOOL = 0xFF2E2E2E;
-    private static final int COLOR_TOOL_TOP = 0xFF383838;
-    private static final int COLOR_TOOL_HOVER = 0xFF3E3E52;
-    private static final int COLOR_TOOL_HOVER_TOP = 0xFF4A4A62;
-    private static final int COLOR_TOOL_LIGHT = 0xFF4B4949;
-    private static final int COLOR_ICON = 0xFFEAE8E9;
-    private static final int COLOR_ICON_ACTIVE = 0xFF30A859;
+    // vanilla buttons
+    private static final int COLOR_BUTTON = 0xFF707070;
+    private static final int COLOR_BUTTON_LIGHT = 0xFFA8A8A8;
+    private static final int COLOR_BUTTON_DARK = 0xFF4C4C4C;
+    private static final int COLOR_BUTTON_ACTIVE = 0xFF555555;
+    private static final int COLOR_BUTTON_ACTIVE_LIGHT = 0xFF7A7A7A;
+    private static final int COLOR_BUTTON_HOVER_BORDER = 0xFFFFFFFF;
+    private static final int COLOR_ICON = 0xFFFFFFFF;
 
-    private static final int COLOR_CONNECTION = 0xFFA8A8AA;
+    private static final int COLOR_CONNECTION = 0xFFD8D8D8;
     private static final int COLOR_CONNECTION_SHADOW = 0xFF050508;
     private static final int COLOR_CONNECTION_PREVIEW = 0xFFFFFF55;
 
@@ -162,11 +163,6 @@ public class GuiManager extends GuiBase {
     }
 
     @Override
-    protected boolean isDarkTheme() {
-        return true;
-    }
-
-    @Override
     protected float getScale() {
         float mult = Math
                 .min((width - SCREEN_MARGIN * 2) / (float) xSize, (height - SCREEN_MARGIN * 2) / (float) ySize);
@@ -202,17 +198,12 @@ public class GuiManager extends GuiBase {
 
         boolean useScreen = useGreenScreen || useBlueScreen || usePinkScreen;
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-        if (!useScreen) {
-            drawPanel(0, 0, xSize, ySize);
-        }
-
         if (hasSpecialRenderer()) {
             // the special interfaces are designed for the original size, keep them centered
             int offsetX = getSpecialOffsetX();
             int offsetY = getSpecialOffsetY();
             if (!useScreen) {
-                drawInset(offsetX - 1, offsetY - 1, MIN_WIDTH + 2, MIN_HEIGHT + 2);
-                drawColoredRect(offsetX, offsetY, MIN_WIDTH, MIN_HEIGHT, COLOR_CANVAS);
+                drawPanel(offsetX, offsetY, MIN_WIDTH, MIN_HEIGHT);
             }
             GL11.glPushMatrix();
             GL11.glTranslatef(offsetX, offsetY, 0);
@@ -227,9 +218,14 @@ public class GuiManager extends GuiBase {
         updateView();
 
         if (!useScreen) {
-            drawInset(canvasX - 1, canvasY - 1, canvasW + 2, canvasH + STATUS_BAR_HEIGHT + 3);
-            drawColoredRect(canvasX, canvasY, canvasW, canvasH + STATUS_BAR_HEIGHT + 1, COLOR_CANVAS);
-            drawColoredRect(canvasX, canvasY + canvasH, canvasW, 1, COLOR_SEPARATOR);
+            drawColoredRect(canvasX, canvasY, canvasW, canvasH, COLOR_CANVAS);
+            // separators like the header, footer and side of newer minecraft menus
+            drawColoredRect(0, canvasY - 2, xSize, 1, COLOR_SEPARATOR_DARK);
+            drawColoredRect(0, canvasY - 1, xSize, 1, COLOR_SEPARATOR_LIGHT);
+            drawColoredRect(canvasX, canvasY + canvasH, canvasW, 1, COLOR_SEPARATOR_LIGHT);
+            drawColoredRect(canvasX, canvasY + canvasH + 1, canvasW, 1, COLOR_SEPARATOR_DARK);
+            drawColoredRect(canvasX - 2, canvasY, 1, canvasH, COLOR_SEPARATOR_DARK);
+            drawColoredRect(canvasX - 1, canvasY, 1, canvasH, COLOR_SEPARATOR_LIGHT);
             String title = Localization.MANAGER_TITLE.toString();
             drawShadowString(title, (xSize - getStringWidth(title)) / 2, BORDER + 6, COLOR_TEXT);
         }
@@ -307,21 +303,21 @@ public class GuiManager extends GuiBase {
                 if (button.isVisible()) {
                     int buttonX = getButtonX(i);
                     int buttonY = getButtonY(i);
-                    int srcButtonY = CollisionHelper.inBounds(
+                    boolean hover = CollisionHelper.inBounds(
                             buttonX,
                             buttonY,
                             TileEntityManager.BUTTON_SIZE_W,
                             TileEntityManager.BUTTON_SIZE_H,
                             x,
-                            y) ? 1 : 0;
+                            y);
 
-                    drawTexture(
+                    drawButton(
                             buttonX,
                             buttonY,
-                            TileEntityManager.BUTTON_SRC_X,
-                            TileEntityManager.BUTTON_SRC_Y + srcButtonY * TileEntityManager.BUTTON_SIZE_H,
                             TileEntityManager.BUTTON_SIZE_W,
-                            TileEntityManager.BUTTON_SIZE_H);
+                            TileEntityManager.BUTTON_SIZE_H,
+                            hover,
+                            false);
                     drawTexture(
                             buttonX + 1,
                             buttonY + 1,
@@ -334,7 +330,7 @@ public class GuiManager extends GuiBase {
         }
 
         if (useInfo) {
-            int textY = canvasY + canvasH + 3;
+            int textY = canvasY + canvasH + 4;
             String zoomText = Localization.ZOOM.toString() + ": " + Math.round(zoom * 100) + "%";
             int zoomWidth = getStringWidth(zoomText);
             drawShadowString(getInfo(canvasW - zoomWidth - 12), canvasX + 3, textY, COLOR_TEXT);
@@ -404,11 +400,14 @@ public class GuiManager extends GuiBase {
         drawColoredRect(x + w - 2, y + h - 2, 1, 1, COLOR_OUTLINE);
     }
 
-    private void drawInset(int x, int y, int w, int h) {
-        drawColoredRect(x, y, w - 1, 1, COLOR_INSET_DARK);
-        drawColoredRect(x, y, 1, h - 1, COLOR_INSET_DARK);
-        drawColoredRect(x + 1, y + h - 1, w - 1, 1, COLOR_PANEL_LIGHT);
-        drawColoredRect(x + w - 1, y + 1, 1, h - 1, COLOR_PANEL_LIGHT);
+    /**
+     * Draws a button looking like the buttons of newer minecraft versions, its border turns white when hovered
+     */
+    public void drawButton(int x, int y, int w, int h, boolean hover, boolean active) {
+        drawColoredRect(x, y, w, h, hover ? COLOR_BUTTON_HOVER_BORDER : COLOR_OUTLINE);
+        drawColoredRect(x + 1, y + 1, w - 2, h - 2, active ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON);
+        drawColoredRect(x + 1, y + 1, w - 2, 1, active ? COLOR_BUTTON_ACTIVE_LIGHT : COLOR_BUTTON_LIGHT);
+        drawColoredRect(x + 1, y + h - 2, w - 2, 1, COLOR_BUTTON_DARK);
     }
 
     private void drawCanvasBackground() {
@@ -473,18 +472,9 @@ public class GuiManager extends GuiBase {
             int y = getToolY();
             boolean hover = CollisionHelper.inBounds(x, y, TOOL_SIZE - 1, TOOL_SIZE - 1, mX, mY);
             boolean active = i == TOOL_GRID && showGrid;
-            int iconColor = active ? COLOR_ICON_ACTIVE : COLOR_ICON;
+            int iconColor = COLOR_ICON;
 
-            // dark buttons like the ones of the NEI crafting tree
-            drawColoredRect(x, y, TOOL_SIZE, TOOL_SIZE, COLOR_OUTLINE);
-            drawColoredRect(x + 1, y + 1, TOOL_SIZE - 2, TOOL_SIZE - 2, hover ? COLOR_TOOL_HOVER : COLOR_TOOL);
-            drawColoredRect(
-                    x + 1,
-                    y + 1,
-                    TOOL_SIZE - 2,
-                    TOOL_SIZE / 2 - 1,
-                    hover ? COLOR_TOOL_HOVER_TOP : COLOR_TOOL_TOP);
-            drawColoredRect(x + 1, y + 1, TOOL_SIZE - 2, 1, COLOR_TOOL_LIGHT);
+            drawButton(x, y, TOOL_SIZE, TOOL_SIZE, hover, active);
 
             int iconX = x + 4;
             int iconY = y + 4;
