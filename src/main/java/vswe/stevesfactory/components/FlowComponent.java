@@ -260,6 +260,13 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                 getComponentWidth(),
                 getComponentHeight());
 
+        // colored stripe telling what kind of command this is
+        int typeColor = getTypeColor();
+        int stripeX = x + DRAGGABLE_SIZE + 1;
+        int stripeW = getComponentWidth() - DRAGGABLE_SIZE - 2;
+        gui.drawColoredRect(stripeX, y + 1, stripeW, 1, typeColor);
+        gui.drawColoredRect(stripeX, y + 2, stripeW, 1, getDarkerColor(typeColor));
+
         int internalX = mX - x;
         int internalY = mY - y;
 
@@ -496,6 +503,49 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         }
 
         GL11.glPopMatrix();
+    }
+
+    public int getTypeColor() {
+        switch (type) {
+            case TRIGGER:
+                return 0xFFE04848;
+            case INPUT:
+                return 0xFF4A80E8;
+            case LIQUID_INPUT:
+                return 0xFF40C0E8;
+            case OUTPUT:
+                return 0xFFE8903C;
+            case LIQUID_OUTPUT:
+                return 0xFFE8C03C;
+            case CONDITION:
+            case LIQUID_CONDITION:
+            case REDSTONE_CONDITION:
+                return 0xFFE8D83C;
+            case FLOW_CONTROL:
+            case FOR_EACH:
+                return 0xFFB060E8;
+            case REDSTONE_EMITTER:
+                return 0xFFB82020;
+            case VARIABLE:
+                return 0xFF40D0A0;
+            case AUTO_CRAFTING:
+                return 0xFF60C040;
+            case CAMOUFLAGE:
+                return 0xFF9A7448;
+            case SIGN:
+                return 0xFFC8A060;
+            case NODE:
+                return 0xFFF0F0F0;
+            default:
+                return 0xFF8A8A8A;
+        }
+    }
+
+    private static int getDarkerColor(int color) {
+        int r = ((color >> 16) & 0xFF) * 3 / 4;
+        int g = ((color >> 8) & 0xFF) * 3 / 4;
+        int b = (color & 0xFF) * 3 / 4;
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
     }
 
     private boolean isHighlighted(int mX, int mY) {

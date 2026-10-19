@@ -622,7 +622,7 @@ public class GuiManager extends GuiBase {
 
         for (FlowComponent component : manager.getFlowItems()) {
             if (component.isVisible()) {
-                int color = component.isBeingMoved() ? 0xFFFFFF55 : component.isOpen() ? 0xFFE0E0E0 : 0xFF9A9A9A;
+                int color = component.isBeingMoved() ? 0xFFFFFFFF : component.getTypeColor();
                 int x = (int) (minimapOriginX + component.getX() * minimapScale);
                 int y = (int) (minimapOriginY + component.getY() * minimapScale);
                 int w = Math.max(1, (int) (component.getComponentWidth() * minimapScale));
