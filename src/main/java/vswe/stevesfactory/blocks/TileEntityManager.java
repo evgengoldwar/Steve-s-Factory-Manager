@@ -76,6 +76,9 @@ public class TileEntityManager extends TileEntity implements ITileEntityInterfac
     // where new commands are placed, kept up to date by the interface so new commands appear in the visible area
     public int spawnX = 50;
     public int spawnY = 50;
+    // command the interface asked to remove without dragging it to the delete button
+    public FlowComponent removalTarget;
+    public int deleteButtonId;
 
     public TileEntityManager() {
         items = new ArrayList<FlowComponent>();
@@ -91,6 +94,7 @@ public class TileEntityManager extends TileEntity implements ITileEntityInterfac
             buttons.add(new ButtonCreate(ComponentType.values()[i]));
         }
 
+        deleteButtonId = buttons.size();
         buttons.add(new Button(Localization.DELETE_COMMAND) {
 
             @Override
@@ -108,12 +112,22 @@ public class TileEntityManager extends TileEntity implements ITileEntityInterfac
                         return true;
                     }
                 }
+                if (removalTarget != null) {
+                    dw.writeComponentId(self, removalTarget.getId());
+                    removalTarget = null;
+                    return true;
+                }
                 return false;
             }
 
             @Override
             public boolean activateOnRelease() {
                 return true;
+            }
+
+            @Override
+            public String getLabel() {
+                return Localization.DELETE_LABEL.toString();
             }
         });
 
@@ -753,6 +767,10 @@ public class TileEntityManager extends TileEntity implements ITileEntityInterfac
             return mouseOver.toString();
         }
 
+        public String getLabel() {
+            return mouseOver.toString();
+        }
+
         public boolean activateOnRelease() {
             return false;
         }
@@ -834,6 +852,11 @@ public class TileEntityManager extends TileEntity implements ITileEntityInterfac
             dw.writeData(FlowComponent.clampPositionY(spawnY), DataBitHelper.FLOW_CONTROL_Y);
 
             return true;
+        }
+
+        @Override
+        public String getLabel() {
+            return type.getLongName();
         }
 
         @Override

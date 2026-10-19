@@ -61,10 +61,19 @@ public class GuiManager extends GuiBase {
     private static final int SCREEN_MARGIN = 4;
 
     private static final int BORDER = 4;
-    private static final int BUTTON_SPACING = 18;
-    private static final int BUTTON_START = 5;
-    private static final int TOP_BAR_HEIGHT = 20;
-    private static final int STATUS_BAR_HEIGHT = 12;
+    private static final int PADDING = 6;
+    private static final int TITLE_BAR_HEIGHT = 20;
+    private static final int INFO_HEIGHT = 34;
+    private static final int INFO_ICON_SIZE = 26;
+    private static final int ZOOM_FIELD_WIDTH = 36;
+    private static final int SIDEBAR_BUTTON_H = 16;
+    private static final int SIDEBAR_SPACING = 18;
+    private static final int SIDEBAR_LABEL_MAX = 80;
+    private static final float SIDEBAR_TEXT_SCALE = 0.75F;
+    private static final int CONTEXT_ITEM_HEIGHT = 14;
+    private static final int CONTEXT_TOGGLE = 0;
+    private static final int CONTEXT_RENAME = 1;
+    private static final int CONTEXT_DELETE = 2;
 
     private static final float MIN_ZOOM = 0.25F;
     private static final float MAX_ZOOM = 2F;
@@ -86,37 +95,45 @@ public class GuiManager extends GuiBase {
     private static final int TOOL_HELP = 3;
     private static final int TOOL_COUNT = 4;
 
-    // vanilla inventory colors
+    // vanilla inventory colors for the frame
     private static final int COLOR_PANEL = 0xFFC6C6C6;
     private static final int COLOR_PANEL_LIGHT = 0xFFFFFFFF;
     private static final int COLOR_PANEL_DARK = 0xFF555555;
     private static final int COLOR_OUTLINE = 0xFF000000;
+    private static final int COLOR_TITLE = 0x404040;
     private static final int COLOR_TEXT = 0xFFFFFF;
+    private static final int COLOR_TEXT_GRAY = 0xA0A0A0;
+    private static final int COLOR_TEXT_ERROR = 0xFF6060;
 
-    // like the menus of newer minecraft versions, the world is visible behind a darkened list area
-    private static final int COLOR_CANVAS = 0x50000000;
-    private static final int COLOR_CANVAS_OUTSIDE = 0x40000000;
-    private static final int COLOR_GRID_MINOR = 0x0CFFFFFF;
-    private static final int COLOR_GRID_MAJOR = 0x18FFFFFF;
-    private static final int COLOR_SEPARATOR_LIGHT = 0x40FFFFFF;
-    private static final int COLOR_SEPARATOR_DARK = 0x90000000;
+    // dark panels sunken into the frame
+    private static final int COLOR_INSET = 0xFF2C2F34;
+    private static final int COLOR_INSET_BORDER = 0xFF141517;
+    private static final int COLOR_CANVAS_OUTSIDE = 0xFF24262A;
+    private static final int COLOR_GRID_MINOR = 0xFF32353B;
+    private static final int COLOR_GRID_MAJOR = 0xFF3A3D44;
 
-    // vanilla buttons
-    private static final int COLOR_BUTTON = 0xFF707070;
-    private static final int COLOR_BUTTON_LIGHT = 0xFFA8A8A8;
-    private static final int COLOR_BUTTON_DARK = 0xFF4C4C4C;
-    private static final int COLOR_BUTTON_ACTIVE = 0xFF555555;
-    private static final int COLOR_BUTTON_ACTIVE_LIGHT = 0xFF7A7A7A;
-    private static final int COLOR_BUTTON_HOVER_BORDER = 0xFFFFFFFF;
+    // dark raised elements, the commands and buttons
+    private static final int COLOR_RAISED = 0xFF3E4146;
+    private static final int COLOR_RAISED_ACTIVE = 0xFF33363B;
+    private static final int COLOR_RAISED_TOP = 0xFF5C5F65;
+    private static final int COLOR_RAISED_LEFT = 0xFF4E5157;
+    private static final int COLOR_RAISED_BOTTOM = 0xFF25272A;
+    private static final int COLOR_RAISED_RIGHT = 0xFF2D2F33;
+    private static final int COLOR_RAISED_BORDER = 0xFF0F1011;
+    private static final int COLOR_HIGHLIGHT = 0xFF5BCB3B;
+    private static final int COLOR_SLOT = 0xFF222427;
+    private static final int COLOR_SLOT_BORDER = 0xFF111214;
+    private static final int COLOR_SLOT_LIGHT = 0xFF3A3D42;
     private static final int COLOR_ICON = 0xFFFFFFFF;
 
-    private static final int COLOR_CONNECTION = 0xFFD8D8D8;
-    private static final int COLOR_CONNECTION_SHADOW = 0xFF050508;
-    private static final int COLOR_CONNECTION_PREVIEW = 0xFFFFFF55;
+    private static final int COLOR_CONNECTION = 0xFF4CC34C;
+    private static final int COLOR_CONNECTION_SHADOW = 0xFF101113;
+    private static final int COLOR_CONNECTION_PREVIEW = 0xFFFFFFFF;
+    private static final int LINE_WIDTH = 2;
 
     private static final int ROUTE_OFFSET = 6;
     private static final int ROUTE_DETOUR = 72;
-    private static final int PULSE_SPACING = 10;
+    private static final int PULSE_SPACING = 12;
     private static final int PULSE_LENGTH = 3;
     private static final float PULSE_SPEED = 12F;
     private static final float PULSE_SPEED_HIGHLIGHT = 30F;
@@ -130,6 +147,19 @@ public class GuiManager extends GuiBase {
     private int canvasW;
     private int canvasH;
     private int buttonRows = 13;
+    private int sidebarX;
+    private int sidebarY;
+    private int sidebarW;
+    private int sidebarH;
+    private int sidebarButtonW;
+    private int sidebarLabelW;
+    private int infoX;
+    private int infoY;
+    private int infoW;
+    private FlowComponent infoComponent;
+    private FlowComponent contextComponent;
+    private int contextX;
+    private int contextY;
 
     private float cameraX;
     private float cameraY;
@@ -151,15 +181,30 @@ public class GuiManager extends GuiBase {
 
         super.initGui();
 
-        canvasY = BORDER + TOP_BAR_HEIGHT;
-        int bottom = ySize - BORDER - 1;
-        buttonRows = Math.max(1, (bottom - canvasY - TileEntityManager.BUTTON_SIZE_H) / BUTTON_SPACING + 1);
-        int buttonColumns = (manager.buttons.size() + buttonRows - 1) / buttonRows;
+        int top = BORDER + TITLE_BAR_HEIGHT + 2;
+        infoX = PADDING;
+        infoW = xSize - PADDING * 2;
+        infoY = ySize - BORDER - 2 - INFO_HEIGHT;
 
-        canvasX = BUTTON_START + Math.max(1, buttonColumns) * BUTTON_SPACING;
-        canvasW = xSize - BORDER - 1 - canvasX;
-        // the status bar is placed below the canvas, separated by a line
-        canvasH = bottom - canvasY - STATUS_BAR_HEIGHT - 1;
+        // the side bar lists the buttons with their names, as wide as the longest name allows
+        sidebarLabelW = 0;
+        for (TileEntityManager.Button button : manager.buttons) {
+            sidebarLabelW = Math
+                    .max(sidebarLabelW, (int) Math.ceil(getStringWidth(button.getLabel()) * SIDEBAR_TEXT_SCALE));
+        }
+        sidebarLabelW = Math.min(SIDEBAR_LABEL_MAX, sidebarLabelW);
+        sidebarButtonW = 17 + sidebarLabelW + 4;
+        sidebarX = PADDING;
+        sidebarY = top;
+        sidebarH = infoY - 4 - top;
+        buttonRows = Math.max(1, (sidebarH - 6 - SIDEBAR_BUTTON_H) / SIDEBAR_SPACING + 1);
+        int buttonColumns = Math.max(1, (manager.buttons.size() + buttonRows - 1) / buttonRows);
+        sidebarW = 4 + buttonColumns * (sidebarButtonW + 2);
+
+        canvasX = sidebarX + sidebarW + 6;
+        canvasY = top + 2;
+        canvasW = xSize - PADDING - 2 - canvasX;
+        canvasH = sidebarH - 4;
     }
 
     @Override
@@ -198,12 +243,17 @@ public class GuiManager extends GuiBase {
 
         boolean useScreen = useGreenScreen || useBlueScreen || usePinkScreen;
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        if (!useScreen) {
+            drawPanel(0, 0, xSize, ySize);
+            drawTitleBar();
+        }
+
         if (hasSpecialRenderer()) {
             // the special interfaces are designed for the original size, keep them centered
             int offsetX = getSpecialOffsetX();
             int offsetY = getSpecialOffsetY();
             if (!useScreen) {
-                drawPanel(offsetX, offsetY, MIN_WIDTH, MIN_HEIGHT);
+                drawInsetPanel(offsetX - 2, offsetY - 2, MIN_WIDTH + 4, MIN_HEIGHT + 4);
             }
             GL11.glPushMatrix();
             GL11.glTranslatef(offsetX, offsetY, 0);
@@ -218,16 +268,8 @@ public class GuiManager extends GuiBase {
         updateView();
 
         if (!useScreen) {
-            drawColoredRect(canvasX, canvasY, canvasW, canvasH, COLOR_CANVAS);
-            // separators like the header, footer and side of newer minecraft menus
-            drawColoredRect(0, canvasY - 2, xSize, 1, COLOR_SEPARATOR_DARK);
-            drawColoredRect(0, canvasY - 1, xSize, 1, COLOR_SEPARATOR_LIGHT);
-            drawColoredRect(canvasX, canvasY + canvasH, canvasW, 1, COLOR_SEPARATOR_LIGHT);
-            drawColoredRect(canvasX, canvasY + canvasH + 1, canvasW, 1, COLOR_SEPARATOR_DARK);
-            drawColoredRect(canvasX - 2, canvasY, 1, canvasH, COLOR_SEPARATOR_DARK);
-            drawColoredRect(canvasX - 1, canvasY, 1, canvasH, COLOR_SEPARATOR_LIGHT);
-            String title = Localization.MANAGER_TITLE.toString();
-            drawShadowString(title, (xSize - getStringWidth(title)) / 2, BORDER + 6, COLOR_TEXT);
+            drawInsetPanel(sidebarX, sidebarY, sidebarW, sidebarH);
+            drawInsetPanel(canvasX - 2, canvasY - 2, canvasW + 4, canvasH + 4);
         }
         // the components are depth sorted, they should never end up behind the background
         GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
@@ -236,6 +278,7 @@ public class GuiManager extends GuiBase {
 
         int worldX = toWorldX(x);
         int worldY = toWorldY(y);
+        boolean onContextMenu = isOnContextMenu(x, y);
 
         startClipping(canvasX, canvasY, canvasW, canvasH);
         if (!useScreen) {
@@ -292,6 +335,20 @@ public class GuiManager extends GuiBase {
         GL11.glPopMatrix();
         stopClipping();
 
+        if (isInCanvas(x, y) && !onContextMenu) {
+            FlowComponent hovered = getComponentAt(worldX, worldY, false);
+            if (hovered != null) {
+                infoComponent = hovered;
+            }
+        }
+        if (infoComponent != null && (!infoComponent.isVisible() || !manager.getFlowItems().contains(infoComponent))) {
+            infoComponent = null;
+        }
+        if (contextComponent != null
+                && (!contextComponent.isVisible() || !manager.getFlowItems().contains(contextComponent))) {
+            contextComponent = null;
+        }
+
         GL11.glPushMatrix();
         GL11.glTranslatef(0, 0, Z_LEVEL_OVERLAY);
         drawToolbar(x, y);
@@ -303,52 +360,37 @@ public class GuiManager extends GuiBase {
                 if (button.isVisible()) {
                     int buttonX = getButtonX(i);
                     int buttonY = getButtonY(i);
-                    boolean hover = CollisionHelper.inBounds(
-                            buttonX,
-                            buttonY,
-                            TileEntityManager.BUTTON_SIZE_W,
-                            TileEntityManager.BUTTON_SIZE_H,
-                            x,
-                            y);
+                    boolean hover = isOnButton(i, x, y);
 
-                    drawButton(
-                            buttonX,
-                            buttonY,
-                            TileEntityManager.BUTTON_SIZE_W,
-                            TileEntityManager.BUTTON_SIZE_H,
-                            hover,
-                            false);
+                    drawDarkButton(buttonX, buttonY, sidebarButtonW, SIDEBAR_BUTTON_H, hover, false);
                     drawTexture(
-                            buttonX + 1,
-                            buttonY + 1,
+                            buttonX + 2,
+                            buttonY + 2,
                             TileEntityManager.BUTTON_INNER_SRC_X,
                             TileEntityManager.BUTTON_INNER_SRC_Y + i * TileEntityManager.BUTTON_INNER_SIZE_H,
                             TileEntityManager.BUTTON_INNER_SIZE_W,
                             TileEntityManager.BUTTON_INNER_SIZE_H);
+                    String label = fontRendererObj
+                            .trimStringToWidth(button.getLabel(), (int) (sidebarLabelW / SIDEBAR_TEXT_SCALE));
+                    drawShadowString(label, buttonX + 17, buttonY + 5, SIDEBAR_TEXT_SCALE, COLOR_TEXT);
                 }
             }
         }
 
         if (useInfo) {
-            int textY = canvasY + canvasH + 4;
-            String zoomText = Localization.ZOOM.toString() + ": " + Math.round(zoom * 100) + "%";
-            int zoomWidth = getStringWidth(zoomText);
-            drawShadowString(getInfo(canvasW - zoomWidth - 12), canvasX + 3, textY, COLOR_TEXT);
-            drawShadowString(zoomText, canvasX + canvasW - 3 - zoomWidth, textY, COLOR_TEXT);
+            drawInfoPanel();
+        }
+
+        if (contextComponent != null) {
+            drawContextMenu(x, y);
         }
         GL11.glPopMatrix();
 
-        if (useMouseOver) {
+        if (useMouseOver && !onContextMenu) {
             if (useButtons) {
                 for (int i = 0; i < manager.buttons.size(); i++) {
                     TileEntityManager.Button button = manager.buttons.get(i);
-                    if (button.isVisible() && CollisionHelper.inBounds(
-                            getButtonX(i),
-                            getButtonY(i),
-                            TileEntityManager.BUTTON_SIZE_W,
-                            TileEntityManager.BUTTON_SIZE_H,
-                            x,
-                            y)) {
+                    if (button.isVisible() && isOnButton(i, x, y)) {
                         drawMouseOver(button.getMouseOver(), x, y);
                     }
                 }
@@ -383,6 +425,182 @@ public class GuiManager extends GuiBase {
         }
     }
 
+    private void drawTitleBar() {
+        // icon showing a few connected nodes
+        int iconX = PADDING;
+        int iconY = BORDER + 2;
+        drawSlot(iconX, iconY, TOOL_SIZE, TOOL_SIZE, COLOR_SLOT_BORDER);
+        drawColoredRect(iconX + 3, iconY + 3, 4, 4, COLOR_ICON);
+        drawColoredRect(iconX + 9, iconY + 9, 4, 4, COLOR_ICON);
+        drawColoredRect(iconX + 9, iconY + 3, 4, 4, COLOR_CONNECTION);
+        drawColoredRect(iconX + 7, iconY + 4, 2, 1, COLOR_CONNECTION);
+        drawColoredRect(iconX + 10, iconY + 7, 1, 2, COLOR_CONNECTION);
+
+        drawString(Localization.MANAGER_TITLE.toString(), iconX + TOOL_SIZE + 5, iconY + 4, 1F, COLOR_TITLE);
+
+        // the current zoom is shown in a field next to the tools
+        String zoomText = Math.round(zoom * 100) + "%";
+        int fieldX = getToolX(0) - ZOOM_FIELD_WIDTH - 4;
+        drawSlot(fieldX, getToolY(), ZOOM_FIELD_WIDTH, TOOL_SIZE, COLOR_SLOT_BORDER);
+        drawShadowString(
+                zoomText,
+                fieldX + (ZOOM_FIELD_WIDTH - getStringWidth(zoomText)) / 2,
+                getToolY() + 4,
+                COLOR_TEXT);
+    }
+
+    private void drawInfoPanel() {
+        drawInsetPanel(infoX, infoY, infoW, INFO_HEIGHT);
+
+        int slotX = infoX + 4;
+        int slotY = infoY + 4;
+        drawSlot(slotX, slotY, INFO_ICON_SIZE, INFO_ICON_SIZE, COLOR_SLOT_BORDER);
+
+        // the path and the amount of commands are shown to the right
+        String commands = getInfo(infoW / 2);
+        drawShadowString(commands, infoX + infoW - 6 - getStringWidth(commands), infoY + 6, COLOR_TEXT_GRAY);
+
+        FlowComponent component = infoComponent;
+        if (component == null) {
+            return;
+        }
+
+        bindTexture(COMPONENTS);
+        GL11.glPushMatrix();
+        GL11.glTranslatef(guiLeft + slotX + 1, guiTop + slotY + 1, 0);
+        GL11.glScalef(2, 2, 1);
+        GL11.glTranslatef(-guiLeft, -guiTop, 0);
+        drawTexture(
+                0,
+                0,
+                TileEntityManager.BUTTON_INNER_SRC_X,
+                TileEntityManager.BUTTON_INNER_SRC_Y
+                        + component.getType().ordinal() * TileEntityManager.BUTTON_INNER_SIZE_H,
+                TileEntityManager.BUTTON_INNER_SIZE_W,
+                TileEntityManager.BUTTON_INNER_SIZE_H);
+        GL11.glPopMatrix();
+
+        int textX = slotX + INFO_ICON_SIZE + 6;
+        int textWidth = infoW / 2 - textX;
+        drawShadowString(
+                fontRendererObj.trimStringToWidth(component.getName(), textWidth),
+                textX,
+                infoY + 5,
+                COLOR_TEXT);
+        drawShadowString(component.getType().getLongName(), textX, infoY + 16, 0.75F, COLOR_TEXT_GRAY);
+        if (!component.getErrors().isEmpty()) {
+            String error = component.getErrors().get(0).replace("\n", " ");
+            drawShadowString(
+                    fontRendererObj.trimStringToWidth(error, (int) (textWidth / 0.75F)),
+                    textX,
+                    infoY + 24,
+                    0.75F,
+                    COLOR_TEXT_ERROR);
+        }
+    }
+
+    private List<String> getContextItems() {
+        List<String> items = new ArrayList<String>();
+        items.add(
+                contextComponent.isOpen() ? Localization.CONTEXT_CLOSE.toString()
+                        : Localization.CONTEXT_OPEN.toString());
+        items.add(Localization.CONTEXT_RENAME.toString());
+        items.add(Localization.CONTEXT_DELETE.toString());
+        return items;
+    }
+
+    private int getContextWidth() {
+        int width = 0;
+        for (String item : getContextItems()) {
+            width = Math.max(width, getStringWidth(item));
+        }
+        return width + 16;
+    }
+
+    private int getContextHeight() {
+        return getContextItems().size() * CONTEXT_ITEM_HEIGHT + 4;
+    }
+
+    private boolean isOnContextMenu(int x, int y) {
+        return contextComponent != null && x >= contextX
+                && x < contextX + getContextWidth()
+                && y >= contextY
+                && y < contextY + getContextHeight();
+    }
+
+    private int getContextItemAt(int x, int y) {
+        if (!isOnContextMenu(x, y)) {
+            return -1;
+        }
+        int item = (y - contextY - 2) / CONTEXT_ITEM_HEIGHT;
+        return item >= 0 && item < getContextItems().size() ? item : -1;
+    }
+
+    private void drawContextMenu(int mX, int mY) {
+        List<String> items = getContextItems();
+        int w = getContextWidth();
+        drawRaisedPanel(contextX, contextY, w, getContextHeight());
+        int hovered = getContextItemAt(mX, mY);
+        for (int i = 0; i < items.size(); i++) {
+            int itemY = contextY + 2 + i * CONTEXT_ITEM_HEIGHT;
+            if (i == hovered) {
+                drawColoredRect(contextX + 2, itemY, w - 4, CONTEXT_ITEM_HEIGHT, COLOR_HIGHLIGHT);
+                drawColoredRect(contextX + 3, itemY + 1, w - 6, CONTEXT_ITEM_HEIGHT - 2, COLOR_RAISED_ACTIVE);
+            }
+            drawShadowString(items.get(i), contextX + 8, itemY + 3, COLOR_TEXT);
+        }
+    }
+
+    private void openContextMenu(FlowComponent component, int x, int y) {
+        contextComponent = component;
+        contextX = Math.min(x, xSize - BORDER - getContextWidth());
+        contextY = Math.min(y, ySize - BORDER - getContextHeight());
+    }
+
+    private void onContextClick(int item) {
+        FlowComponent component = contextComponent;
+        contextComponent = null;
+        switch (item) {
+            case CONTEXT_TOGGLE:
+                component.setOpen(!component.isOpen());
+                bringToFront(component);
+                break;
+            case CONTEXT_RENAME:
+                component.startRenaming();
+                bringToFront(component);
+                break;
+            case CONTEXT_DELETE:
+                // removed in the same way as when dropped on the delete button
+                manager.removalTarget = component;
+                TileEntityManager.Button button = manager.buttons.get(manager.deleteButtonId);
+                DataWriter dw = PacketHandler.getButtonPacketWriter();
+                dw.writeData(manager.deleteButtonId, DataBitHelper.GUI_BUTTON_ID);
+                if (button.onClick(dw)) {
+                    PacketHandler.sendDataToServer(dw);
+                }
+                manager.removalTarget = null;
+                break;
+        }
+    }
+
+    private void bringToFront(FlowComponent component) {
+        manager.getZLevelRenderingList().remove(component);
+        manager.getZLevelRenderingList().add(0, component);
+    }
+
+    private FlowComponent getComponentAt(int worldX, int worldY, boolean titleOnly) {
+        for (FlowComponent component : manager.getZLevelRenderingList()) {
+            if (component.isVisible() && worldX >= component.getX()
+                    && worldX < component.getX() + component.getComponentWidth()
+                    && worldY >= component.getY()
+                    && worldY < component.getY()
+                            + (titleOnly ? FlowComponent.getTitleHeight() : component.getComponentHeight())) {
+                return component;
+            }
+        }
+        return null;
+    }
+
     private void drawPanel(int x, int y, int w, int h) {
         drawColoredRect(x + 1, y + 1, w - 2, h - 2, COLOR_PANEL);
         drawColoredRect(x + 2, y + 1, w - 5, 2, COLOR_PANEL_LIGHT);
@@ -401,13 +619,57 @@ public class GuiManager extends GuiBase {
     }
 
     /**
-     * Draws a button looking like the buttons of newer minecraft versions, its border turns white when hovered
+     * The panels inside the frame are dark and sunken into it
      */
-    public void drawButton(int x, int y, int w, int h, boolean hover, boolean active) {
-        drawColoredRect(x, y, w, h, hover ? COLOR_BUTTON_HOVER_BORDER : COLOR_OUTLINE);
-        drawColoredRect(x + 1, y + 1, w - 2, h - 2, active ? COLOR_BUTTON_ACTIVE : COLOR_BUTTON);
-        drawColoredRect(x + 1, y + 1, w - 2, 1, active ? COLOR_BUTTON_ACTIVE_LIGHT : COLOR_BUTTON_LIGHT);
-        drawColoredRect(x + 1, y + h - 2, w - 2, 1, COLOR_BUTTON_DARK);
+    private void drawInsetPanel(int x, int y, int w, int h) {
+        drawColoredRect(x, y, w - 1, 1, COLOR_PANEL_DARK);
+        drawColoredRect(x, y, 1, h - 1, COLOR_PANEL_DARK);
+        drawColoredRect(x + 1, y + h - 1, w - 1, 1, COLOR_PANEL_LIGHT);
+        drawColoredRect(x + w - 1, y + 1, 1, h - 1, COLOR_PANEL_LIGHT);
+        drawColoredRect(x + 1, y + 1, w - 2, h - 2, COLOR_INSET_BORDER);
+        drawColoredRect(x + 2, y + 2, w - 4, h - 4, COLOR_INSET);
+    }
+
+    private void drawRaised(int x, int y, int w, int h, boolean active) {
+        drawColoredRect(x, y, w, h, active ? COLOR_RAISED_ACTIVE : COLOR_RAISED);
+        if (!active) {
+            drawColoredRect(x, y, w, 1, COLOR_RAISED_TOP);
+            drawColoredRect(x, y + 1, 1, h - 2, COLOR_RAISED_LEFT);
+        }
+        drawColoredRect(x, y + h - 1, w, 1, COLOR_RAISED_BOTTOM);
+        drawColoredRect(x + w - 1, y + 1, 1, h - 2, COLOR_RAISED_RIGHT);
+    }
+
+    /**
+     * Commands and menus are dark raised panels with rounded corners
+     */
+    public void drawRaisedPanel(int x, int y, int w, int h) {
+        drawColoredRect(x + 1, y, w - 2, 1, COLOR_RAISED_BORDER);
+        drawColoredRect(x + 1, y + h - 1, w - 2, 1, COLOR_RAISED_BORDER);
+        drawColoredRect(x, y + 1, 1, h - 2, COLOR_RAISED_BORDER);
+        drawColoredRect(x + w - 1, y + 1, 1, h - 2, COLOR_RAISED_BORDER);
+        drawRaised(x + 1, y + 1, w - 2, h - 2, false);
+    }
+
+    /**
+     * Buttons are dark raised boxes with a green border when hovered
+     */
+    public void drawDarkButton(int x, int y, int w, int h, boolean hover, boolean active) {
+        drawColoredRect(x, y, w, h, hover ? COLOR_HIGHLIGHT : COLOR_RAISED_BORDER);
+        drawRaised(x + 1, y + 1, w - 2, h - 2, active);
+    }
+
+    /**
+     * A sunken slot, used behind icons and fields
+     */
+    public void drawSlot(int x, int y, int w, int h, int border) {
+        drawColoredRect(x, y, w, h, border);
+        drawColoredRect(x + 1, y + 1, w - 2, h - 2, COLOR_SLOT);
+        drawColoredRect(x + 1, y + h - 2, w - 2, 1, COLOR_SLOT_LIGHT);
+    }
+
+    public int getSlotBorderColor() {
+        return COLOR_SLOT_BORDER;
     }
 
     private void drawCanvasBackground() {
@@ -474,7 +736,7 @@ public class GuiManager extends GuiBase {
             boolean active = i == TOOL_GRID && showGrid;
             int iconColor = COLOR_ICON;
 
-            drawButton(x, y, TOOL_SIZE, TOOL_SIZE, hover, active);
+            drawDarkButton(x, y, TOOL_SIZE, TOOL_SIZE, hover, active);
 
             int iconX = x + 4;
             int iconY = y + 4;
@@ -513,11 +775,11 @@ public class GuiManager extends GuiBase {
     }
 
     private int getToolX(int id) {
-        return BORDER + 1 + id * TOOL_SPACING;
+        return xSize - PADDING - (TOOL_COUNT - id) * TOOL_SPACING + (TOOL_SPACING - TOOL_SIZE);
     }
 
     private int getToolY() {
-        return BORDER + 1;
+        return BORDER + 2;
     }
 
     private int getToolAt(int mX, int mY) {
@@ -547,7 +809,9 @@ public class GuiManager extends GuiBase {
                         + "\n"
                         + Localization.VIEW_HELP_CANCEL.toString()
                         + "\n"
-                        + Localization.VIEW_HELP_OPEN.toString();
+                        + Localization.VIEW_HELP_OPEN.toString()
+                        + "\n"
+                        + Localization.VIEW_HELP_CONTEXT.toString();
         }
     }
 
@@ -596,24 +860,24 @@ public class GuiManager extends GuiBase {
         }
         switch (option) {
             case CONDITION_TRUE:
-                return 0xFF55FF55;
+                return 0xFFA6E84C;
             case CONDITION_FALSE:
-                return 0xFFFF5555;
+                return 0xFFE84C4C;
             case INTERVAL:
-                return 0xFF55FFFF;
+                return 0xFFE8C43C;
             case FOR_EACH:
-                return 0xFFFF55FF;
+                return 0xFFC86AE8;
             case REDSTONE_PULSE_HIGH:
             case REDSTONE_PULSE_LOW:
             case REDSTONE_HIGH:
             case REDSTONE_LOW:
-                return 0xFFD02828;
+                return 0xFFC82828;
             case BUD:
             case BUD_PULSE_HIGH:
             case BUD_HIGH:
             case BUD_PULSE_LOW:
             case BUD_LOW:
-                return 0xFFFFAA00;
+                return 0xFFE8963C;
             default:
                 return COLOR_CONNECTION;
         }
@@ -772,11 +1036,11 @@ public class GuiManager extends GuiBase {
     private void addSegment(int[] from, int[] to, int offset) {
         int x = Math.min(from[0], to[0]) + offset;
         int y = Math.min(from[1], to[1]) + offset;
-        addRect(x, y, Math.abs(to[0] - from[0]) + 1, Math.abs(to[1] - from[1]) + 1);
+        addRect(x, y, Math.abs(to[0] - from[0]) + LINE_WIDTH, Math.abs(to[1] - from[1]) + LINE_WIDTH);
     }
 
     private void addPixel(int x, int y) {
-        addRect(x, y, 1, 1);
+        addRect(x, y, LINE_WIDTH, LINE_WIDTH);
     }
 
     private void addRect(int x, int y, int w, int h) {
@@ -835,11 +1099,15 @@ public class GuiManager extends GuiBase {
     }
 
     private int getButtonX(int id) {
-        return BUTTON_START + (id / buttonRows) * BUTTON_SPACING;
+        return sidebarX + 3 + (id / buttonRows) * (sidebarButtonW + 2);
     }
 
     private int getButtonY(int id) {
-        return canvasY + 1 + (id % buttonRows) * BUTTON_SPACING;
+        return sidebarY + 3 + (id % buttonRows) * SIDEBAR_SPACING;
+    }
+
+    private boolean isOnButton(int id, int x, int y) {
+        return CollisionHelper.inBounds(getButtonX(id), getButtonY(id), sidebarButtonW - 1, SIDEBAR_BUTTON_H - 1, x, y);
     }
 
     private int getSpecialOffsetX() {
@@ -1067,6 +1335,17 @@ public class GuiManager extends GuiBase {
             return;
         }
 
+        if (contextComponent != null) {
+            int item = getContextItemAt(x, y);
+            if (item != -1) {
+                if (button == 0) {
+                    onContextClick(item);
+                }
+                return;
+            }
+            contextComponent = null;
+        }
+
         int tool = getToolAt(x, y);
         if (tool != -1) {
             if (button == 0) {
@@ -1076,6 +1355,14 @@ public class GuiManager extends GuiBase {
         }
 
         boolean inCanvas = isInCanvas(x, y);
+        if (inCanvas && button == 1) {
+            // right clicking the title of a command shows the actions for it
+            FlowComponent component = getComponentAt(toWorldX(x), toWorldY(y), true);
+            if (component != null && !component.isEditingName()) {
+                openContextMenu(component, x, y);
+                return;
+            }
+        }
         if (inCanvas && button == 2) {
             startPanning(x, y, button);
             return;
@@ -1118,13 +1405,7 @@ public class GuiManager extends GuiBase {
     private void onClickButtonCheck(int x, int y, boolean release) {
         for (int i = 0; i < manager.buttons.size(); i++) {
             TileEntityManager.Button guiButton = manager.buttons.get(i);
-            if (guiButton.isVisible() && CollisionHelper.inBounds(
-                    getButtonX(i),
-                    getButtonY(i),
-                    TileEntityManager.BUTTON_SIZE_W,
-                    TileEntityManager.BUTTON_SIZE_H,
-                    x,
-                    y) && guiButton.activateOnRelease() == release) {
+            if (guiButton.isVisible() && isOnButton(i, x, y) && guiButton.activateOnRelease() == release) {
                 DataWriter dw = PacketHandler.getButtonPacketWriter();
                 dw.writeData(i, DataBitHelper.GUI_BUTTON_ID);
                 if (guiButton.onClick(dw)) {
@@ -1381,6 +1662,10 @@ public class GuiManager extends GuiBase {
         if (hasSpecialRenderer()) {
             getSpecialRenderer().onKeyTyped(this, c, k);
         } else {
+            if (contextComponent != null && k == Keyboard.KEY_ESCAPE) {
+                contextComponent = null;
+                return;
+            }
 
             if (k == 54 && !doubleShiftFlag) {
                 DataWriter dw = PacketHandler.getWriterForServerActionPacket();

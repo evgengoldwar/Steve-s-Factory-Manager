@@ -1,6 +1,12 @@
 # Only the newer strings are translated, everything else falls back to en_US
 gui.sfm.Zoom=Масштаб
-gui.sfm.ManagerTitle=Менеджер фабрики
+gui.sfm.ManagerTitle=Редактор узлов
+gui.sfm.DeleteLabel=Удалить
+gui.sfm.ContextOpen=Развернуть
+gui.sfm.ContextClose=Свернуть
+gui.sfm.ContextRename=Переименовать
+gui.sfm.ContextDelete=Удалить
+gui.sfm.ViewHelpContext=ПКМ по заголовку команды открывает меню действий
 gui.sfm.ViewFit=Показать все команды (Home)
 gui.sfm.ViewResetZoom=Сбросить масштаб до 100%
 gui.sfm.ViewGrid=Показать/скрыть сетку
