@@ -41,8 +41,6 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     private static final int ARROW_SIZE_H = 10;
 
     private static final int MENU_ITEM_SIZE_H = 13;
-    private static final int MENU_X = 2;
-    private static final int MENU_Y = 20;
     private static final int MENU_SIZE_H = 130;
     private static final int MENU_ITEM_CAPACITY = 5;
 
@@ -98,7 +96,6 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     private static final int ICON_Y = 4;
     private static final int ICON_SIZE = 12;
     private static final int TITLE_HEIGHT = 19;
-    private static final int LARGE_PADDING = 3;
     private static final float MENU_TEXT_SCALE = 0.8F;
     private static final int COLOR_ARROW = 0xFFD0D0D0;
     private static final int COLOR_ARROW_HOVER = 0xFFFFFFFF;
@@ -159,6 +156,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     private int resetTimer;
     private boolean isDragging;
     private boolean isLarge;
+    private int settingsWidth;
     private List<ComponentMenu> menus;
     private int openMenuId;
     private ConnectionSet connectionSet;
@@ -260,13 +258,8 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
         gui.drawRaisedPanel(x, y, getComponentWidth(), getComponentHeight());
         if (isLarge) {
-            // the menus are placed in a sunken area below the title
-            gui.drawSlot(
-                    x + 1,
-                    y + TITLE_HEIGHT,
-                    getComponentWidth() - 2,
-                    getComponentHeight() - TITLE_HEIGHT - 1,
-                    gui.getSlotBorderColor());
+            // the command which settings are shown in the side panel is outlined
+            gui.drawOutline(x - 1, y - 1, getComponentWidth() + 2, getComponentHeight() + 2);
         }
         int slotBorder = gui.getSlotBorderColor();
         if (!errors.isEmpty()) {
@@ -292,52 +285,6 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                 isLarge,
                 inArrowBounds(internalX, internalY));
 
-        if (isLarge) {
-            for (int i = 0; i < menus.size(); i++) {
-                ComponentMenu menu = menus.get(i);
-
-                if (!menu.isVisible()) {
-                    if (openMenuId == i) {
-                        openMenuId = -1;
-                    }
-
-                    continue;
-                }
-
-                int itemX = getMenuAreaX();
-                int itemY = y + getMenuItemY(i);
-                int itemW = getMenuAreaWidth();
-                boolean isOpen = i == openMenuId;
-                // the menu headers are buttons, clicking them opens the menu
-                boolean hover = CollisionHelper
-                        .inBounds(MENU_X, getMenuItemY(i), itemW - 1, MENU_ITEM_SIZE_H - 1, internalX, internalY);
-                gui.drawDarkButton(itemX, itemY, itemW, MENU_ITEM_SIZE_H, hover, isOpen);
-
-                drawChevron(
-                        gui,
-                        itemX + itemW - MENU_ARROW_RIGHT,
-                        itemY + MENU_ARROW_Y,
-                        MENU_ARROW_SIZE_W,
-                        MENU_ARROW_SIZE_H,
-                        isOpen,
-                        false);
-
-                gui.drawShadowString(
-                        menu.getName(),
-                        x + MENU_X + MENU_ITEM_TEXT_X,
-                        y + getMenuItemY(i) + MENU_ITEM_TEXT_Y,
-                        MENU_TEXT_SCALE,
-                        COLOR_TITLE);
-
-                if (i == openMenuId) {
-                    GL11.glPushMatrix();
-                    GL11.glTranslatef(itemX, getMenuAreaY(i), 0);
-                    menu.draw(gui, mX - itemX, mY - getMenuAreaY(i));
-                    GL11.glPopMatrix();
-                }
-            }
-        }
-
         if (isEditing) {
             // the name field may be wider than the command to fit the name
             gui.drawSlot(
@@ -355,9 +302,9 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                     0xFFFFFFFF);
         } else {
             // small commands showing their type use two lines
-            boolean showType = !isLarge && name != null && Settings.isCommandTypes() && !GuiScreen.isCtrlKeyDown();
+            boolean showType = name != null && Settings.isCommandTypes() && !GuiScreen.isCtrlKeyDown();
             int textY = y + (showType ? TEXT_Y_SECOND_LINE : TEXT_Y);
-            gui.drawShadowString(getDisplayName(gui, !isLarge), x + TEXT_X, textY, 0.7F, COLOR_TITLE);
+            gui.drawShadowString(getDisplayName(gui, true), x + TEXT_X, textY, 0.7F, COLOR_TITLE);
 
             if (showType) {
                 gui.drawCenteredString(
@@ -642,19 +589,6 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
     @SideOnly(Side.CLIENT)
     public void drawMouseOver(GuiManager gui, int mX, int mY) {
-        if (isLarge) {
-            for (int i = 0; i < menus.size(); i++) {
-                ComponentMenu menu = menus.get(i);
-
-                if (menu.isVisible() && i == openMenuId) {
-                    // the menu uses its own coordinates
-                    gui.pushTooltipTransform(getMenuAreaX(), getMenuAreaY(i), 1F);
-                    menu.drawMouseOver(gui, mX - getMenuAreaX(), mY - getMenuAreaY(i));
-                    gui.popTooltipTransform();
-                }
-            }
-        }
-
         int outputCount = 0;
         int inputCount = 0;
         int sideCount = 0;
@@ -716,35 +650,23 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                                     && !GuiScreen.isShiftKeyDown()) {
                                 manager.setSelectedComponent(this);
                             } else {
-                                isLarge = !isLarge;
-                            }
-                        } else
-                    if (isLarge) {
-
-                        for (int i = 0; i < menus.size(); i++) {
-                            ComponentMenu menu = menus.get(i);
-
-                            if (menu.isVisible()) {
-                                if (inMenuArrowBounds(i, internalX, internalY)
-                                        || ((Settings.isLargeOpenHitBoxMenu() || button == 0)
-                                                && internalY >= getMenuItemY(i)
-                                                && internalY <= getMenuItemY(i) + MENU_ITEM_SIZE_H)) {
-                                    if (openMenuId == i) {
-                                        openMenuId = -1;
-                                    } else {
-                                        openMenuId = i;
-                                    }
-
-                                    return true;
+                                // the settings of only one command are shown at a time
+                                boolean open = !isLarge;
+                                for (FlowComponent component : manager.getFlowItems()) {
+                                    component.isLarge = false;
                                 }
-
-                                if (i == openMenuId) {
-                                    menu.onClick(mX - getMenuAreaX(), mY - getMenuAreaY(i), button);
+                                isLarge = open;
+                                if (open && openMenuId == -1) {
+                                    // start with the first menu open so there is something to edit right away
+                                    for (int i = 0; i < menus.size(); i++) {
+                                        if (menus.get(i).isVisible()) {
+                                            openMenuId = i;
+                                            break;
+                                        }
+                                    }
                                 }
                             }
                         }
-
-                    }
             return true;
         } else {
             int outputCount = 0;
@@ -933,12 +855,6 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     public void onDrag(int mX, int mY) {
         followMouse(mX, mY);
 
-        for (int i = 0; i < menus.size(); i++) {
-            ComponentMenu menu = menus.get(i);
-
-            menu.onDrag(mX - getMenuAreaX(), mY - getMenuAreaY(i), i == openMenuId);
-        }
-
         for (int i = 0; i < connectionSet.getConnections().length; i++) {
             Connection connection = connections.get(i);
             if (connection != null) {
@@ -951,11 +867,6 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
         followMouse(mX, mY);
         if (isDragging) {
             writeLocationData();
-        }
-
-        for (int i = 0; i < menus.size(); i++) {
-            ComponentMenu menu = menus.get(i);
-            menu.onRelease(mX - getMenuAreaX(), mY - getMenuAreaY(i), isLarge && i == openMenuId);
         }
 
         for (int i = 0; i < connectionSet.getConnections().length; i++) {
@@ -1099,7 +1010,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
     private boolean inMenuArrowBounds(int i, int internalX, int internalY) {
         return CollisionHelper.inBounds(
-                MENU_X + getMenuAreaWidth() - MENU_ARROW_RIGHT,
+                getMenuAreaWidth() - MENU_ARROW_RIGHT,
                 getMenuItemY(i) + MENU_ARROW_Y,
                 MENU_ARROW_SIZE_W,
                 MENU_ARROW_SIZE_H,
@@ -1109,7 +1020,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
 
     private int getMenuItemY(int id) {
 
-        int ret = MENU_Y;
+        int ret = 0;
         for (int i = 0; i < id; i++) {
             if (menus.get(i).isVisible()) {
                 ret += MENU_ITEM_SIZE_H - 1;
@@ -1137,7 +1048,7 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
      * Open commands are as wide as their widest menu
      */
     private int getMenuAreaWidth() {
-        int width = ComponentMenu.DEFAULT_WIDTH;
+        int width = Math.max(ComponentMenu.DEFAULT_WIDTH, settingsWidth);
         for (ComponentMenu menu : menus) {
             if (menu.isVisible()) {
                 width = Math.max(width, menu.getMenuWidth());
@@ -1147,16 +1058,23 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     }
 
     public int getComponentWidth() {
-        return isLarge ? getMenuAreaWidth() + MENU_X * 2 : COMPONENT_SIZE_W;
+        return COMPONENT_SIZE_W;
     }
 
     public int getComponentHeight() {
-        if (!isLarge) {
-            return COMPONENT_SIZE_H;
-        }
+        return COMPONENT_SIZE_H;
+    }
 
-        // open commands are only as high as their menus need
-        int height = MENU_Y + 1;
+    /**
+     * The settings of an open command are shown in a panel next to the canvas. They use their own coordinates, with the
+     * headers of the menus starting at the top left corner.
+     */
+    public void setSettingsWidth(int width) {
+        settingsWidth = width;
+    }
+
+    public int getSettingsHeight() {
+        int height = 1;
         for (int i = 0; i < menus.size(); i++) {
             if (menus.get(i).isVisible()) {
                 height += MENU_ITEM_SIZE_H - 1;
@@ -1165,7 +1083,93 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
                 }
             }
         }
-        return height + LARGE_PADDING;
+        return height;
+    }
+
+    @SideOnly(Side.CLIENT)
+    public void drawSettings(GuiManager gui, int mX, int mY) {
+        for (int i = 0; i < menus.size(); i++) {
+            ComponentMenu menu = menus.get(i);
+
+            if (!menu.isVisible()) {
+                if (openMenuId == i) {
+                    openMenuId = -1;
+                }
+
+                continue;
+            }
+
+            int itemX = getMenuAreaX();
+            int itemY = getMenuItemY(i);
+            int itemW = getMenuAreaWidth();
+            boolean isOpen = i == openMenuId;
+            // the menu headers are buttons, clicking them opens the menu
+            boolean hover = CollisionHelper.inBounds(0, getMenuItemY(i), itemW - 1, MENU_ITEM_SIZE_H - 1, mX, mY);
+            gui.drawDarkButton(itemX, itemY, itemW, MENU_ITEM_SIZE_H, hover, isOpen);
+
+            drawChevron(
+                    gui,
+                    itemX + itemW - MENU_ARROW_RIGHT,
+                    itemY + MENU_ARROW_Y,
+                    MENU_ARROW_SIZE_W,
+                    MENU_ARROW_SIZE_H,
+                    isOpen,
+                    false);
+
+            gui.drawShadowString(
+                    menu.getName(),
+                    MENU_ITEM_TEXT_X,
+                    getMenuItemY(i) + MENU_ITEM_TEXT_Y,
+                    MENU_TEXT_SCALE,
+                    COLOR_TITLE);
+
+            if (i == openMenuId) {
+                GL11.glPushMatrix();
+                GL11.glTranslatef(itemX, getMenuAreaY(i), 0);
+                menu.draw(gui, mX - itemX, mY - getMenuAreaY(i));
+                GL11.glPopMatrix();
+            }
+        }
+    }
+
+    @SideOnly(Side.CLIENT)
+    public void drawSettingsMouseOver(GuiManager gui, int mX, int mY) {
+        if (openMenuId != -1 && menus.get(openMenuId).isVisible()) {
+            // the menu uses its own coordinates
+            gui.pushTooltipTransform(getMenuAreaX(), getMenuAreaY(openMenuId), 1F);
+            menus.get(openMenuId).drawMouseOver(gui, mX - getMenuAreaX(), mY - getMenuAreaY(openMenuId));
+            gui.popTooltipTransform();
+        }
+    }
+
+    public void onSettingsClick(int mX, int mY, int button) {
+        for (int i = 0; i < menus.size(); i++) {
+            ComponentMenu menu = menus.get(i);
+
+            if (menu.isVisible()) {
+                if (inMenuArrowBounds(i, mX, mY) || (mY >= getMenuItemY(i) && mY < getMenuItemY(i) + MENU_ITEM_SIZE_H
+                        && (button == 0 || Settings.isLargeOpenHitBoxMenu()))) {
+                    openMenuId = openMenuId == i ? -1 : i;
+                    return;
+                }
+
+                if (i == openMenuId) {
+                    menu.onClick(mX - getMenuAreaX(), mY - getMenuAreaY(i), button);
+                }
+            }
+        }
+    }
+
+    public void onSettingsDrag(int mX, int mY) {
+        for (int i = 0; i < menus.size(); i++) {
+            menus.get(i).onDrag(mX - getMenuAreaX(), mY - getMenuAreaY(i), i == openMenuId);
+        }
+    }
+
+    public void onSettingsRelease(int mX, int mY) {
+        for (int i = 0; i < menus.size(); i++) {
+            menus.get(i).onRelease(mX - getMenuAreaX(), mY - getMenuAreaY(i), isLarge && i == openMenuId);
+        }
     }
 
     public int getTitleHeight() {
@@ -1225,11 +1229,11 @@ public class FlowComponent implements IComponentNetworkReader, Comparable<FlowCo
     }
 
     private int getMenuAreaX() {
-        return x + MENU_X;
+        return 0;
     }
 
     private int getMenuAreaY(int i) {
-        return y + getMenuItemY(i) + MENU_ITEM_SIZE_H;
+        return getMenuItemY(i) + MENU_ITEM_SIZE_H;
     }
 
     @SideOnly(Side.CLIENT)

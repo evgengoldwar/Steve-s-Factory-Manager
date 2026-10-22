@@ -22,6 +22,7 @@ gui.sfm.SelectNoneShort=Ничего
 gui.sfm.SelectInvertShort=Инверт.
 gui.sfm.SelectVariableShort=Перем.
 gui.sfm.SelectSide=Выберите сторону, чтобы изменить её настройки
+gui.sfm.CloseSettings=Закрыть настройки (Esc)
 gui.sfm.FilterLong=Выбрать фильтр
 gui.sfm.MultiLong=Как работать с несколькими контейнерами
 gui.sfm.SubMenuLong=Открыть настройки фильтра

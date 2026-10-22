@@ -69,6 +69,11 @@ public class GuiManager extends GuiBase {
     private static final int SIDEBAR_SPACING = 18;
     private static final int SIDEBAR_LABEL_MAX = 80;
     private static final float SIDEBAR_TEXT_SCALE = 0.75F;
+    private static final int PANEL_WIDTH = 214;
+    private static final int PANEL_HEADER_HEIGHT = 28;
+    private static final int PANEL_PADDING = 5;
+    private static final int PANEL_CLOSE_SIZE = 14;
+    private static final float PANEL_SPEED = 7F;
     private static final int CONTEXT_ITEM_HEIGHT = 14;
     private static final int CONTEXT_RENAME = 0;
     private static final int CONTEXT_DELETE = 1;
@@ -105,6 +110,7 @@ public class GuiManager extends GuiBase {
     private static final int COLOR_TEXT_ERROR = 0xFF6060;
     private static final int COLOR_TEXT_ACTIVE = 0xFFFF80;
     private static final int COLOR_SELECTED_BORDER = 0xFFFFD040;
+    private static final int COLOR_ERROR_BORDER = 0xFFD02020;
     private static final int COLOR_ON = 0xFF3A7A2E;
     private static final int COLOR_ON_LIGHT = 0xFF5BA84A;
     private static final int COLOR_ON_DARK = 0xFF27561F;
@@ -153,6 +159,10 @@ public class GuiManager extends GuiBase {
     private int canvasW;
     private int canvasH;
     private int buttonRows = 13;
+    private int canvasFullW;
+    // the settings of the open command slide in from the right side
+    private FlowComponent panelComponent;
+    private float panelProgress;
     private int sidebarX;
     private int sidebarY;
     private int sidebarW;
@@ -229,8 +239,9 @@ public class GuiManager extends GuiBase {
 
         canvasX = sidebarX + sidebarW + 6;
         canvasY = top + 2;
-        canvasW = xSize - PADDING - 2 - canvasX;
+        canvasFullW = xSize - PADDING - 2 - canvasX;
         canvasH = sidebarH - 4;
+        updatePanelLayout();
     }
 
     @Override
@@ -291,6 +302,7 @@ public class GuiManager extends GuiBase {
             return;
         }
 
+        updatePanel(elapsedSeconds);
         updateView();
 
         if (!useScreen) {
@@ -362,6 +374,10 @@ public class GuiManager extends GuiBase {
         GL11.glPopMatrix();
         stopClipping();
 
+        if (!useScreen) {
+            drawSettingsPanel(x, y);
+        }
+
         if (isInCanvas(x, y) && !onContextMenu) {
             FlowComponent hovered = getComponentAt(worldX, worldY, false);
             if (hovered != null) {
@@ -424,6 +440,14 @@ public class GuiManager extends GuiBase {
             int tool = getToolAt(x, y);
             if (tool != -1) {
                 drawMouseOver(getToolMouseOver(tool), x, y);
+            } else if (isOnPanel(x, y)) {
+                if (isOnPanelClose(x, y)) {
+                    drawMouseOver(Localization.CLOSE_SETTINGS.toString(), x, y);
+                } else {
+                    setTooltipTransform(getPanelContentX(), getPanelContentY(), 1F);
+                    panelComponent.drawSettingsMouseOver(this, x - getPanelContentX(), y - getPanelContentY());
+                    resetTooltipTransform();
+                }
             } else if (isInCanvas(x, y)) {
                 setTooltipTransform(canvasX - cameraX * zoom, canvasY - cameraY * zoom, zoom);
                 for (FlowComponent itemBase : manager.getZLevelRenderingList()) {
@@ -448,6 +472,137 @@ public class GuiManager extends GuiBase {
         if (!Keyboard.isKeyDown(54) && doubleShiftFlag) {
             doubleShiftFlag = false;
         }
+    }
+
+    private FlowComponent getOpenComponent() {
+        for (FlowComponent component : manager.getZLevelRenderingList()) {
+            if (component.isVisible() && component.isOpen()) {
+                return component;
+            }
+        }
+        return null;
+    }
+
+    private boolean isPanelOpen() {
+        return panelComponent != null && panelComponent.isOpen();
+    }
+
+    private void updatePanel(float elapsedSeconds) {
+        FlowComponent open = getOpenComponent();
+        if (open != null) {
+            panelComponent = open;
+        } else if (panelComponent != null && !manager.getFlowItems().contains(panelComponent)) {
+            panelComponent = null;
+        }
+
+        float target = open != null ? 1F : 0F;
+        float step = Math.min(elapsedSeconds, 0.1F) * PANEL_SPEED;
+        if (panelProgress < target) {
+            panelProgress = Math.min(target, panelProgress + step);
+        } else if (panelProgress > target) {
+            panelProgress = Math.max(target, panelProgress - step);
+        }
+        if (panelProgress == 0) {
+            panelComponent = null;
+        }
+        updatePanelLayout();
+    }
+
+    private void updatePanelLayout() {
+        // the canvas gets narrower while the panel slides in
+        float eased = 1 - (1 - panelProgress) * (1 - panelProgress);
+        canvasW = canvasFullW - Math.round((PANEL_WIDTH + 4) * eased);
+    }
+
+    private int getPanelX() {
+        return canvasX + canvasW + 4;
+    }
+
+    private int getPanelContentX() {
+        return getPanelX() + PANEL_PADDING;
+    }
+
+    private int getPanelContentY() {
+        return sidebarY + PANEL_HEADER_HEIGHT + 4;
+    }
+
+    private boolean isOnPanel(int x, int y) {
+        return panelComponent != null && x >= getPanelX()
+                && x < Math.min(getPanelX() + PANEL_WIDTH, xSize - PADDING)
+                && y >= sidebarY
+                && y < sidebarY + sidebarH;
+    }
+
+    private int getPanelCloseX() {
+        return getPanelX() + PANEL_WIDTH - PANEL_PADDING - PANEL_CLOSE_SIZE;
+    }
+
+    private boolean isOnPanelClose(int x, int y) {
+        return isOnPanel(x, y) && CollisionHelper
+                .inBounds(getPanelCloseX(), sidebarY + PANEL_PADDING, PANEL_CLOSE_SIZE - 1, PANEL_CLOSE_SIZE - 1, x, y);
+    }
+
+    private void drawSettingsPanel(int mX, int mY) {
+        FlowComponent component = panelComponent;
+        if (component == null) {
+            return;
+        }
+
+        int panelX = getPanelX();
+        int panelY = sidebarY;
+        startClipping(panelX, panelY, Math.min(PANEL_WIDTH, xSize - PADDING - panelX), sidebarH);
+        drawInsetPanel(panelX, panelY, PANEL_WIDTH, sidebarH);
+
+        // the header shows what is being edited
+        int iconX = panelX + PANEL_PADDING;
+        int iconY = panelY + PANEL_PADDING;
+        drawSlot(iconX, iconY, 18, 18, component.getErrors().isEmpty() ? COLOR_SLOT_BORDER : COLOR_ERROR_BORDER);
+        drawTexture(
+                iconX + 3,
+                iconY + 3,
+                TileEntityManager.BUTTON_INNER_SRC_X,
+                TileEntityManager.BUTTON_INNER_SRC_Y
+                        + component.getType().ordinal() * TileEntityManager.BUTTON_INNER_SIZE_H,
+                TileEntityManager.BUTTON_INNER_SIZE_W,
+                TileEntityManager.BUTTON_INNER_SIZE_H);
+        int textX = iconX + 23;
+        int textWidth = getPanelCloseX() - textX - 4;
+        drawShadowString(
+                fontRendererObj.trimStringToWidth(component.getName(), textWidth),
+                textX,
+                iconY + 1,
+                COLOR_TEXT);
+        drawShadowString(component.getType().getLongName(), textX, iconY + 12, 0.7F, COLOR_TEXT_GRAY);
+
+        boolean closeHover = isOnPanelClose(mX, mY);
+        int closeX = getPanelCloseX();
+        int closeY = panelY + PANEL_PADDING;
+        boolean started = beginRects();
+        drawDarkButton(closeX, closeY, PANEL_CLOSE_SIZE, PANEL_CLOSE_SIZE, closeHover, false);
+        for (int i = 0; i < 6; i++) {
+            drawColoredRect(closeX + 4 + i, closeY + 4 + i, 1, 1, COLOR_ICON);
+            drawColoredRect(closeX + 9 - i, closeY + 4 + i, 1, 1, COLOR_ICON);
+        }
+        drawColoredRect(
+                panelX + PANEL_PADDING,
+                panelY + PANEL_HEADER_HEIGHT,
+                PANEL_WIDTH - PANEL_PADDING * 2,
+                1,
+                COLOR_INSET_BORDER);
+        endRects(started);
+
+        // the menus of the command
+        int contentX = getPanelContentX();
+        int contentY = getPanelContentY();
+        component.setSettingsWidth(PANEL_WIDTH - PANEL_PADDING * 2);
+        bindTexture(COMPONENTS);
+        GL11.glPushMatrix();
+        GL11.glTranslatef(contentX, contentY, 0);
+        component.drawSettings(this, mX - contentX, mY - contentY);
+        GL11.glPopMatrix();
+        bindTexture(COMPONENTS);
+
+        stopClipping();
     }
 
     private void drawTitleBar() {
@@ -751,6 +906,18 @@ public class GuiManager extends GuiBase {
      */
     public void drawTextField(int x, int y, int w, int h, boolean selected) {
         drawSlot(x, y, w, h, selected ? COLOR_HIGHLIGHT : COLOR_SLOT_BORDER);
+    }
+
+    /**
+     * A one pixel border around an area, used to mark selected things
+     */
+    public void drawOutline(int x, int y, int w, int h) {
+        boolean started = beginRects();
+        drawColoredRect(x, y, w, 1, COLOR_HIGHLIGHT);
+        drawColoredRect(x, y + h - 1, w, 1, COLOR_HIGHLIGHT);
+        drawColoredRect(x, y + 1, 1, h - 2, COLOR_HIGHLIGHT);
+        drawColoredRect(x + w - 1, y + 1, 1, h - 2, COLOR_HIGHLIGHT);
+        endRects(started);
     }
 
     /**
@@ -1397,6 +1564,11 @@ public class GuiManager extends GuiBase {
             int x = scaleX(Mouse.getEventX() * this.width / (float) this.mc.displayWidth) - guiLeft;
             int y = scaleY(this.height - Mouse.getEventY() * this.height / (float) this.mc.displayHeight - 1) - guiTop;
 
+            if (isOnPanel(x, y)) {
+                panelComponent.doScroll(scroll);
+                return;
+            }
+
             if (!isCtrlKeyDown()) {
                 int worldX = toWorldX(x);
                 int worldY = toWorldY(y);
@@ -1486,6 +1658,20 @@ public class GuiManager extends GuiBase {
             return;
         }
 
+        if (isOnPanel(x, y)) {
+            if (!isPanelOpen()) {
+                return;
+            }
+            if (isOnPanelClose(x, y)) {
+                if (button == 0) {
+                    panelComponent.setOpen(false);
+                }
+            } else if (y >= getPanelContentY()) {
+                panelComponent.onSettingsClick(x - getPanelContentX(), y - getPanelContentY(), button);
+            }
+            return;
+        }
+
         boolean inCanvas = isInCanvas(x, y);
         if (inCanvas && button == 1) {
             // right clicking the title of a command shows the actions for it
@@ -1568,6 +1754,10 @@ public class GuiManager extends GuiBase {
             return;
         }
 
+        if (isPanelOpen()) {
+            panelComponent.onSettingsDrag(x - getPanelContentX(), y - getPanelContentY());
+        }
+
         int worldX = toWorldX(x);
         int worldY = toWorldY(y);
         for (FlowComponent itemBase : manager.getZLevelRenderingList()) {
@@ -1611,6 +1801,11 @@ public class GuiManager extends GuiBase {
                 if (itemBase.isVisible()) {
                     itemBase.onRelease(worldX, worldY, button);
                 }
+            }
+
+            // menus also need to know when the mouse is released, for example to drop commands into groups
+            if (isPanelOpen()) {
+                panelComponent.onSettingsRelease(x - getPanelContentX(), y - getPanelContentY());
             }
         }
 
@@ -1789,6 +1984,10 @@ public class GuiManager extends GuiBase {
         } else {
             if (contextComponent != null && k == Keyboard.KEY_ESCAPE) {
                 contextComponent = null;
+                return;
+            }
+            if (isPanelOpen() && k == Keyboard.KEY_ESCAPE) {
+                panelComponent.setOpen(false);
                 return;
             }
 
